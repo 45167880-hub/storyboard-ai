@@ -55,7 +55,6 @@
             background: rgba(16, 185, 129, 0.1);
         }
         
-        /* Reference Images Grid */
         .ref-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -348,6 +347,18 @@
         .api-status.ok { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
         .api-status.error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .api-status.pending { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        
+        .model-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .model-badge.gemini { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .model-badge.nano { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col">
@@ -357,7 +368,7 @@
         <div class="flex items-center gap-2">
             <div class="w-7 h-7 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">S</div>
             <h1 class="text-base font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">多参考锁定版</span>
+                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">Gemini+NanoBanana版</span>
             </h1>
         </div>
         
@@ -377,39 +388,71 @@
     <div class="flex-1 flex overflow-hidden">
         
         <!-- Left Panel -->
-        <aside class="w-[460px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
+        <aside class="w-[480px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
             
             <!-- API Settings -->
             <div class="p-3 border-b border-white/5 space-y-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
-                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">API 配置</label>
+                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">API 配置中心</label>
                     <button onclick="testApiConnection()" class="text-[10px] px-2 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors">
                         测试连接
                     </button>
                 </div>
                 
                 <div class="space-y-2">
+                    <!-- Provider Selection -->
                     <div class="flex gap-2">
                         <select id="apiProvider" onchange="updateApiEndpoint()" class="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50">
                             <option value="custom">自定义</option>
                             <option value="toapis">Toapis</option>
                             <option value="openai">OpenAI</option>
-                            <option value="siliconflow">SiliconFlow</option>
-                            <option value="dashscope">DashScope(阿里)</option>
+                            <option value="siliconflow">硅基流动</option>
+                            <option value="dashscope">阿里云 DashScope</option>
+                            <option value="google">Google AI Studio</option>
+                            <option value="nano-banana">Nano Banana</option>
                         </select>
-                        <select id="imageModel" class="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50">
-                            <option value="gpt-4o-image">GPT-4o Image</option>
-                            <option value="gpt-4o-mini">GPT-4o Mini</option>
-                            <option value="sd-xl">Stable Diffusion XL</option>
-                            <option value="sd-3">Stable Diffusion 3</option>
-                            <option value="wanx">通义万相</option>
-                        </select>
+                    </div>
+                    
+                    <!-- Text Model (Script Analysis) -->
+                    <div class="flex items-center justify-between bg-white/5 p-2 rounded border border-white/5">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-gray-500 block mb-1">剧本拆解模型 (文本)</label>
+                            <select id="modelSelect" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500/50">
+                                <option value="gpt-4o">GPT-4o (推荐)</option>
+                                <option value="gpt-4o-mini">GPT-4o Mini (快速)</option>
+                                <option value="gemini-3.0-pro">Gemini 3.0 Pro</option>
+                                <option value="gemini-2.0-pro">Gemini 2.0 Pro</option>
+                                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                <option value="deepseek-chat">DeepSeek Chat</option>
+                            </select>
+                        </div>
+                        <span class="model-badge gemini ml-2 hidden" id="textModelBadge">Gemini</span>
+                    </div>
+                    
+                    <!-- Image Model (Generation) -->
+                    <div class="flex items-center justify-between bg-white/5 p-2 rounded border border-white/5">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-gray-500 block mb-1">图像生成模型</label>
+                            <select id="imageModel" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-pink-500/50">
+                                <option value="gpt-4o-image">GPT-4o Image</option>
+                                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                <option value="dall-e-3">DALL-E 3</option>
+                                <option value="nano-banana-pro">Nano Banana Pro</option>
+                                <option value="nano-banana-v2">Nano Banana V2</option>
+                                <option value="sd-xl">Stable Diffusion XL</option>
+                                <option value="sd-3">Stable Diffusion 3</option>
+                                <option value="wanx-v1">通义万相 Wanx</option>
+                                <option value="gemini-2.0-flash-exp-image">Gemini 2.0 Flash (图生图)</option>
+                            </select>
+                        </div>
+                        <span class="model-badge nano ml-2 hidden" id="imageModelBadge">Nano</span>
                     </div>
                     
                     <input type="text" id="apiBaseUrl" placeholder="https://api.example.com/v1" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50" value="">
                     <input type="password" id="apiKey" placeholder="输入 API Key" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50">
                     
                     <div id="apiErrorMsg" class="hidden text-[10px] text-red-400 bg-red-950/30 p-2 rounded border border-red-900/50"></div>
+                    <div id="apiTip" class="hidden text-[10px] text-blue-400 bg-blue-950/30 p-2 rounded border border-blue-900/50"></div>
                 </div>
             </div>
 
@@ -475,9 +518,9 @@
                     <textarea id="scriptInput" placeholder="在此输入或粘贴剧本内容...&#10;支持格式: 第X场 / 场景X / SCENE X / EXT./INT." class="w-full h-24 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 resize-none leading-relaxed"></textarea>
                 </div>
 
-                <button onclick="analyzeScript()" id="analyzeBtn" class="w-full py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 mb-3">
+                <button onclick="analyzeScript()" id="analyzeBtn" class="w-full py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 mb-3">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    AI 拆解剧本
+                    <span id="analyzeBtnText">AI 拆解剧本</span>
                 </button>
             </div>
 
@@ -503,10 +546,10 @@
                         参考图片系统 (支持多图+锁定)
                     </label>
                     <div class="flex gap-2">
-                        <button onclick="lockAllRefs('character')" class="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30 transition-colors" title="锁定所有人物参考">
+                        <button onclick="lockAllRefs('character')" class="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30 transition-colors">
                             🔒 锁定人物
                         </button>
-                        <button onclick="lockAllRefs('scene')" class="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30 transition-colors" title="锁定所有场景参考">
+                        <button onclick="lockAllRefs('scene')" class="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30 transition-colors">
                             🔒 锁定场景
                         </button>
                     </div>
@@ -519,14 +562,12 @@
                         <span class="text-[10px] text-amber-500/70" id="charLockedCount"></span>
                     </div>
                     <div class="ref-grid" id="charRefGrid">
-                        <!-- Dynamic content -->
                         <div class="upload-slot" onclick="document.getElementById('charRefInput').click()">
                             <svg class="w-5 h-5 text-purple-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path></svg>
                             <span class="text-[9px] text-gray-500">添加</span>
                         </div>
                     </div>
                     <input type="file" id="charRefInput" accept="image/*" multiple class="hidden" onchange="handleRefImages(event, 'character')">
-                    <p class="text-[10px] text-gray-600">锁定后的图片将在每次生图时强制使用</p>
                 </div>
 
                 <!-- Scene References -->
@@ -536,7 +577,6 @@
                         <span class="text-[10px] text-amber-500/70" id="sceneLockedCount"></span>
                     </div>
                     <div class="ref-grid" id="sceneRefGrid">
-                        <!-- Dynamic content -->
                         <div class="upload-slot" onclick="document.getElementById('sceneRefInput').click()">
                             <svg class="w-5 h-5 text-purple-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path></svg>
                             <span class="text-[9px] text-gray-500">添加</span>
@@ -565,7 +605,7 @@
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                         剧本拆解 (点击追加到中缀)
                     </label>
-                    <span id="sceneCount" class="text-[10px] text-gray-600">0 场</span>
+                    <span id="sceneListCount" class="text-[10px] text-gray-600">0 场</span>
                 </div>
                 
                 <div id="scenesList" class="flex-1 overflow-y-auto p-1 space-y-1">
@@ -661,7 +701,6 @@
             <p id="loadingText" class="text-gray-400 text-sm animate-pulse">正在生成...</p>
             <p id="loadingDetail" class="text-gray-600 text-xs mt-2">准备请求...</p>
             
-            <!-- Progress Bar -->
             <div class="mt-4 w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
                 <div id="progressBar" class="bg-purple-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
@@ -691,21 +730,51 @@
         let dragOffset = { x: 0, y: 0 };
         let uploadedFileName = null;
         let abortController = null;
-        let failedGenerations = []; // 记录失败的生成任务
+        let failedGenerations = [];
         
-        // Enhanced Reference Images System
         let referenceImages = {
-            character: [], // {id, src, locked, name}
-            scene: []      // {id, src, locked, name}
+            character: [],
+            scene: []
         };
         
-        // API Configuration Templates
+        // API Configuration Templates - 新增 Google 和 Nano Banana 配置
         const apiTemplates = {
-            toapis: { base: 'https://api.toapis.com/v1', model: 'gpt-4o-image' },
-            openai: { base: 'https://api.openai.com/v1', model: 'dall-e-3' },
-            siliconflow: { base: 'https://api.siliconflow.cn/v1', model: 'stabilityai/stable-diffusion-xl-base-1.0' },
-            dashscope: { base: 'https://dashscope.aliyuncs.com/api/v1', model: 'wanx-v1' },
-            custom: { base: '', model: 'gpt-4o-image' }
+            toapis: { 
+                base: 'https://api.toapis.com/v1', 
+                textModel: 'gpt-4o',
+                imageModel: 'gpt-4o-image'
+            },
+            openai: { 
+                base: 'https://api.openai.com/v1', 
+                textModel: 'gpt-4o',
+                imageModel: 'dall-e-3'
+            },
+            siliconflow: { 
+                base: 'https://api.siliconflow.cn/v1', 
+                textModel: 'deepseek-ai/DeepSeek-V2.5',
+                imageModel: 'stabilityai/stable-diffusion-xl-base-1.0'
+            },
+            dashscope: { 
+                base: 'https://dashscope.aliyuncs.com/compatible-mode/v1', 
+                textModel: 'qwen-max',
+                imageModel: 'wanx-v1'
+            },
+            google: { 
+                base: 'https://generativelanguage.googleapis.com/v1beta', 
+                textModel: 'gemini-3.0-pro',
+                imageModel: 'gemini-2.0-flash-exp-image',
+                keyLocation: 'query' // Google uses key in query param
+            },
+            'nano-banana': { 
+                base: 'https://api.nano-banana.com/v1', 
+                textModel: 'gpt-4o',
+                imageModel: 'nano-banana-pro'
+            },
+            custom: { 
+                base: '', 
+                textModel: 'gpt-4o',
+                imageModel: 'gpt-4o-image'
+            }
         };
 
         const defaultSuffixPrompts = {
@@ -725,17 +794,55 @@
             loadFromLocalStorage();
             setupDragDrop();
             updateSuffixPrompt();
+            updateModelBadges();
             updateApiStatus('pending', '等待配置');
         });
+
+        // Update Model Badges visibility
+        function updateModelBadges() {
+            const textModel = document.getElementById('modelSelect').value;
+            const imageModel = document.getElementById('imageModel').value;
+            
+            // Show/hide Gemini badge
+            const geminiBadge = document.getElementById('textModelBadge');
+            if (textModel.includes('gemini')) {
+                geminiBadge.classList.remove('hidden');
+            } else {
+                geminiBadge.classList.add('hidden');
+            }
+            
+            // Show/hide Nano badge
+            const nanoBadge = document.getElementById('imageModelBadge');
+            if (imageModel.includes('nano-banana')) {
+                nanoBadge.classList.remove('hidden');
+            } else {
+                nanoBadge.classList.add('hidden');
+            }
+        }
 
         // API Management
         function updateApiEndpoint() {
             const provider = document.getElementById('apiProvider').value;
             const template = apiTemplates[provider];
+            
             if (template) {
                 document.getElementById('apiBaseUrl').value = template.base;
-                document.getElementById('imageModel').value = template.model;
+                document.getElementById('modelSelect').value = template.textModel;
+                document.getElementById('imageModel').value = template.imageModel;
+                
+                // Show tips for specific providers
+                const tipEl = document.getElementById('apiTip');
+                if (provider === 'google') {
+                    tipEl.textContent = '提示：Google AI Studio 的 Key 需要在 URL 后添加 ?key=YOUR_KEY';
+                    tipEl.classList.remove('hidden');
+                } else if (provider === 'nano-banana') {
+                    tipEl.textContent = '提示：Nano Banana 支持专业级图像生成，适合分镜制作';
+                    tipEl.classList.remove('hidden');
+                } else {
+                    tipEl.classList.add('hidden');
+                }
             }
+            updateModelBadges();
         }
         
         function updateApiStatus(status, text) {
@@ -747,6 +854,7 @@
         async function testApiConnection() {
             const key = document.getElementById('apiKey').value;
             const base = document.getElementById('apiBaseUrl').value;
+            const provider = document.getElementById('apiProvider').value;
             
             if (!key || !base) {
                 showApiError('请填写 API Key 和 Base URL');
@@ -756,20 +864,29 @@
             updateApiStatus('pending', '测试中...');
             
             try {
-                // 简单测试：尝试获取模型列表或发送一个简单请求
-                const response = await fetch(`${base}/models`, {
-                    headers: { 'Authorization': `Bearer ${key}` }
-                });
+                let testUrl = '';
+                let headers = {};
+                
+                if (provider === 'google') {
+                    // Google uses different endpoint structure
+                    testUrl = `${base}/models?key=${key}`;
+                } else {
+                    testUrl = `${base}/models`;
+                    headers['Authorization'] = `Bearer ${key}`;
+                }
+                
+                const response = await fetch(testUrl, { headers });
                 
                 if (response.ok) {
                     updateApiStatus('ok', '连接正常');
                     document.getElementById('apiErrorMsg').classList.add('hidden');
                 } else {
-                    throw new Error(`HTTP ${response.status}`);
+                    const error = await response.text();
+                    throw new Error(`${response.status}: ${error.substring(0, 100)}`);
                 }
             } catch (e) {
                 updateApiStatus('error', '连接失败');
-                showApiError(`连接失败: ${e.message}。请检查 URL 和 Key 是否正确，以及是否支持跨域。`);
+                showApiError(`连接失败: ${e.message}`);
             }
         }
         
@@ -801,7 +918,7 @@
                 reader.readAsDataURL(file);
             });
             
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
         
         function renderRefGrid(type) {
@@ -809,12 +926,10 @@
             const items = referenceImages[type];
             const lockedCount = items.filter(i => i.locked).length;
             
-            // Update counts
             document.getElementById(type === 'character' ? 'charCount' : 'sceneCount').textContent = `(${items.length})`;
             const lockedEl = document.getElementById(type === 'character' ? 'charLockedCount' : 'sceneLockedCount');
             lockedEl.textContent = lockedCount > 0 ? `${lockedCount} 已锁定` : '';
             
-            // Render items
             let html = items.map(item => `
                 <div class="ref-item ${item.locked ? 'locked' : ''}" data-id="${item.id}">
                     <img src="${item.src}" alt="${item.name}">
@@ -830,7 +945,6 @@
                 </div>
             `).join('');
             
-            // Add upload slot at end
             html += `
                 <div class="upload-slot" onclick="document.getElementById('${type === 'character' ? 'charRefInput' : 'sceneRefInput'}').click()">
                     <svg class="w-5 h-5 text-purple-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path></svg>
@@ -997,18 +1111,31 @@
             document.getElementById('midPrompt').value = '';
         }
 
-        // AI Analysis
+        // AI Analysis with Gemini Support
         async function analyzeScript() {
             const script = document.getElementById('scriptInput').value.trim();
+            const apiKey = document.getElementById('apiKey').value;
+            const baseUrl = document.getElementById('apiBaseUrl').value;
+            const model = document.getElementById('modelSelect').value;
+            const provider = document.getElementById('apiProvider').value;
+            
             if (!script) {
                 alert('请输入剧本内容');
                 return;
             }
 
-            showLoading('正在分析剧本结构...', 'AI正在识别场景和镜头...', 10);
+            showLoading('正在分析剧本结构...', `使用 ${model} 分析中...`, 10);
+            updateModelBadges();
             
             try {
-                await simulateAIAnalysis(script);
+                // If using Gemini or other API for analysis
+                if (provider === 'google' || model.includes('gemini')) {
+                    await analyzeWithGemini(script, apiKey, baseUrl, model);
+                } else {
+                    // Default simulation for demo (replace with actual API call)
+                    await simulateAIAnalysis(script);
+                }
+                
                 autoFillStyle(script);
                 renderScenesList();
                 document.getElementById('midPrompt').value = script.substring(0, 500) + (script.length > 500 ? '...' : '');
@@ -1018,6 +1145,51 @@
                 hideLoading();
                 alert('分析失败: ' + error.message);
             }
+        }
+
+        // Gemini-specific analysis
+        async function analyzeWithGemini(script, apiKey, baseUrl, model) {
+            const prompt = `请分析以下剧本内容，提取出场次和镜头：
+
+剧本内容：
+${script}
+
+请以JSON格式返回：
+{
+  "scenes": [
+    {
+      "id": "SC1",
+      "title": "场景标题",
+      "shots": [
+        {"id": "SC1_SHOT1", "description": "镜头描述", "type": "中景"}
+      ]
+    }
+  ]
+}`;
+
+            const response = await fetch(`${baseUrl}/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            });
+
+            if (!response.ok) throw new Error('Gemini API 调用失败');
+            
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            const result = JSON.parse(text);
+            
+            scenes = result.scenes.map((scene, idx) => ({
+                ...scene,
+                id: scene.id || `SC${idx + 1}`,
+                shots: scene.shots.map((shot, sidx) => ({
+                    ...shot,
+                    id: shot.id || `${scene.id}_SHOT${sidx + 1}`
+                }))
+            }));
         }
 
         function autoFillStyle(script) {
@@ -1053,10 +1225,6 @@
             const script = document.getElementById('scriptInput').value;
             if (script.trim()) {
                 autoFillStyle(script);
-                const btn = document.querySelector('button[onclick="regenerateStyle()"]');
-                const original = btn.innerHTML;
-                btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 已刷新';
-                setTimeout(() => btn.innerHTML = original, 1000);
             }
         }
 
@@ -1135,7 +1303,7 @@
 
         function renderScenesList() {
             const container = document.getElementById('scenesList');
-            document.getElementById('sceneCount').textContent = `${scenes.length} 场`;
+            document.getElementById('sceneListCount').textContent = `${scenes.length} 场`;
             
             if (scenes.length === 0) {
                 container.innerHTML = `<div class="text-center text-gray-600 text-xs py-8">请先上传剧本并点击"AI 拆解"</div>`;
@@ -1194,14 +1362,15 @@
             }
         }
 
-        // Enhanced Generation with Retry and Better Error Handling
+        // Enhanced Generation with Nano Banana and Gemini Support
         async function generateWithAllPrompts() {
             const apiKey = document.getElementById('apiKey').value;
             const baseUrl = document.getElementById('apiBaseUrl').value;
+            const provider = document.getElementById('apiProvider').value;
+            const imageModel = document.getElementById('imageModel').value;
             
             if (!apiKey || !baseUrl) {
                 alert('请先配置 API Key 和 Base URL');
-                document.getElementById('apiKey').focus();
                 return;
             }
 
@@ -1214,10 +1383,8 @@
             const lockedRefs = getLockedReferences();
             const hasLockedRefs = lockedRefs.character.length > 0 || lockedRefs.scene.length > 0;
             
-            // Show loading with progress
-            showLoading('正在生成图片...', '准备请求...', 0);
+            showLoading('正在生成图片...', `使用 ${imageModel}...`, 0);
             
-            // Update progress
             updateProgress(20, '构建提示词...');
             
             const prefix = getPrefixPrompt();
@@ -1226,7 +1393,6 @@
             
             document.getElementById('loadingPrompt').textContent = `提示词: ${fullPrompt.substring(0, 200)}...`;
             
-            // Show locked refs in loading
             if (hasLockedRefs) {
                 const refsList = document.getElementById('loadingRefsList');
                 let refsHtml = '';
@@ -1245,97 +1411,21 @@
             try {
                 updateProgress(40, '发送 API 请求...');
                 
-                // Build request based on provider
-                const provider = document.getElementById('apiProvider').value;
-                const model = document.getElementById('imageModel').value;
-                
-                let requestBody = {};
-                let requestUrl = '';
-                let requestHeaders = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                };
-                
-                // Provider-specific request formatting
-                if (provider === 'openai' || provider === 'toapis' || provider === 'siliconflow') {
-                    requestUrl = `${baseUrl}/images/generations`;
-                    requestBody = {
-                        model: model,
-                        prompt: fullPrompt,
-                        n: 1,
-                        size: getImageSize(),
-                        quality: "standard"
-                    };
-                    
-                    // Add reference images if locked (for APIs that support it)
-                    if (hasLockedRefs && provider !== 'openai') { // OpenAI DALL-E doesn't support reference images
-                        // For APIs supporting image_reference
-                        requestBody.reference_images = [
-                            ...lockedRefs.character.map(r => ({ type: 'character', image: r.src })),
-                            ...lockedRefs.scene.map(r => ({ type: 'scene', image: r.src }))
-                        ];
-                    }
-                } else if (provider === 'dashscope') {
-                    // Alibaba DashScope (Tongyi Wanxiang)
-                    requestUrl = `${baseUrl}/services/aigc/text2image/image-synthesis`;
-                    requestBody = {
-                        model: model,
-                        input: { prompt: fullPrompt },
-                        parameters: {
-                            size: getImageSize(),
-                            n: 1
-                        }
-                    };
-                } else {
-                    // Custom/generic
-                    requestUrl = `${baseUrl}/images/generations`;
-                    requestBody = {
-                        model: model,
-                        prompt: fullPrompt,
-                        n: 1,
-                        size: getImageSize()
-                    };
-                }
-                
-                updateProgress(60, '等待模型响应...');
-                
-                const response = await fetch(requestUrl, {
-                    method: 'POST',
-                    headers: requestHeaders,
-                    body: JSON.stringify(requestBody),
-                    signal: abortController.signal
-                });
-
-                updateProgress(80, '处理响应...');
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                // Extract image URL based on different response formats
                 let imageUrl = '';
-                if (data.data && data.data[0]?.url) {
-                    imageUrl = data.data[0].url;
-                } else if (data.output && data.output.image_url) {
-                    // DashScope format
-                    imageUrl = data.output.image_url;
-                } else if (data.images && data.images[0]) {
-                    imageUrl = data.images[0];
-                }
                 
-                if (!imageUrl) {
-                    throw new Error('未在响应中找到图片 URL');
+                // Route to appropriate API handler
+                if (imageModel.includes('nano-banana')) {
+                    imageUrl = await generateWithNanoBanana(fullPrompt, apiKey, baseUrl, imageModel, lockedRefs);
+                } else if (provider === 'google' || imageModel.includes('gemini')) {
+                    imageUrl = await generateWithGeminiImage(fullPrompt, apiKey, baseUrl, imageModel, lockedRefs);
+                } else {
+                    imageUrl = await generateWithStandardAPI(fullPrompt, apiKey, baseUrl, provider, imageModel, lockedRefs);
                 }
                 
                 updateProgress(100, '完成');
                 
-                // Create shot on canvas
                 createShotOnCanvas(imageUrl, fullPrompt, lockedRefs);
                 
-                // Clear failed retry if success
                 failedGenerations = failedGenerations.filter(f => f.prompt !== fullPrompt);
                 updateRetryButton();
                 
@@ -1346,7 +1436,6 @@
             } catch (error) {
                 console.error('Generation failed:', error);
                 
-                // Store failed generation for retry
                 failedGenerations.push({
                     prompt: fullPrompt,
                     prefix: prefix,
@@ -1360,29 +1449,163 @@
                 
                 hideLoading();
                 
-                // Better error message
                 let errorMsg = error.message;
                 if (error.message.includes('CORS')) {
-                    errorMsg = '跨域错误(CORS): 请检查 API 是否支持浏览器端调用，或使用代理';
+                    errorMsg = '跨域错误: 请检查 API 是否支持浏览器端调用';
                 } else if (error.message.includes('401')) {
-                    errorMsg = 'API Key 无效 (401)';
+                    errorMsg = 'API Key 无效';
                 } else if (error.message.includes('429')) {
-                    errorMsg = '请求过于频繁 (429)';
-                } else if (error.message.includes('fetch')) {
-                    errorMsg = '网络请求失败，请检查网络连接和 API 地址';
+                    errorMsg = '请求过于频繁';
                 }
                 
                 showApiError(`生成失败: ${errorMsg}`);
                 updateApiStatus('error', '生成失败');
                 
-                // Fallback to mock image for demo purposes
                 if (confirm(`生成失败: ${errorMsg}\n\n是否使用模拟图片继续测试界面功能？`)) {
                     const mockUrl = `https://picsum.photos/seed/${Date.now()}/800/600`;
                     createShotOnCanvas(mockUrl, fullPrompt + ' [模拟图片]', lockedRefs);
                 }
             }
         }
-        
+
+        // Nano Banana Pro Specific Implementation
+        async function generateWithNanoBanana(prompt, apiKey, baseUrl, model, lockedRefs) {
+            const url = `${baseUrl}/images/generations`;
+            
+            const body = {
+                model: model, // "nano-banana-pro" or "nano-banana-v2"
+                prompt: prompt,
+                n: 1,
+                size: getImageSize(),
+                response_format: "url"
+            };
+            
+            // Nano Banana supports reference images via image_url array
+            if (lockedRefs.character.length > 0 || lockedRefs.scene.length > 0) {
+                body.reference_images = [
+                    ...lockedRefs.character.map(r => r.src),
+                    ...lockedRefs.scene.map(r => r.src)
+                ];
+            }
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body),
+                signal: abortController.signal
+            });
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error?.message || `Nano Banana Error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data.data[0].url;
+        }
+
+        // Gemini Image Generation (Experimental)
+        async function generateWithGeminiImage(prompt, apiKey, baseUrl, model, lockedRefs) {
+            // Gemini uses a different endpoint structure
+            const url = `${baseUrl}/models/${model}:generateContent?key=${apiKey}`;
+            
+            const parts = [{ text: prompt }];
+            
+            // Add reference images if locked (Gemini supports inline images)
+            if (lockedRefs.character.length > 0) {
+                for (const ref of lockedRefs.character.slice(0, 1)) { // Gemini may limit reference count
+                    parts.push({
+                        inline_data: {
+                            mime_type: "image/jpeg",
+                            data: ref.src.split(',')[1] // Remove data:image/jpeg;base64, prefix
+                        }
+                    });
+                }
+            }
+            
+            const body = {
+                contents: [{ parts: parts }],
+                generationConfig: {
+                    responseModalities: ["Text", "Image"]
+                }
+            };
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: abortController.signal
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Gemini API Error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Extract image from Gemini response (it's usually base64 encoded in the parts)
+            const candidate = data.candidates[0];
+            for (const part of candidate.content.parts) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
+            }
+            
+            throw new Error('Gemini 响应中未找到图片');
+        }
+
+        // Standard OpenAI-compatible API
+        async function generateWithStandardAPI(prompt, apiKey, baseUrl, provider, model, lockedRefs) {
+            const url = `${baseUrl}/images/generations`;
+            
+            const body = {
+                model: model,
+                prompt: prompt,
+                n: 1,
+                size: getImageSize(),
+                quality: "standard"
+            };
+            
+            // Add reference images for compatible APIs
+            if ((provider === 'toapis' || provider === 'siliconflow') && 
+                (lockedRefs.character.length > 0 || lockedRefs.scene.length > 0)) {
+                body.reference_images = [
+                    ...lockedRefs.character.map(r => ({ type: 'character', image: r.src })),
+                    ...lockedRefs.scene.map(r => ({ type: 'scene', image: r.src }))
+                ];
+            }
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body),
+                signal: abortController.signal
+            });
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error?.message || `HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.data && data.data[0]?.url) {
+                return data.data[0].url;
+            } else if (data.output?.image_url) {
+                return data.output.image_url;
+            } else if (data.images?.[0]) {
+                return data.images[0];
+            }
+            
+            throw new Error('未在响应中找到图片 URL');
+        }
+
         function updateProgress(percent, text) {
             document.getElementById('progressBar').style.width = percent + '%';
             document.getElementById('loadingDetail').textContent = text;
@@ -1415,7 +1638,7 @@
             for (const item of toRetry) {
                 document.getElementById('midPrompt').value = item.mid;
                 await generateWithAllPrompts();
-                await new Promise(r => setTimeout(r, 1000)); // Delay between retries
+                await new Promise(r => setTimeout(r, 1000));
             }
         }
 
@@ -1433,7 +1656,6 @@
             el.style.height = '200px';
             el.dataset.id = id;
             
-            // Build refs indicator
             let refsIndicator = '';
             if (refsUsed && (refsUsed.character.length > 0 || refsUsed.scene.length > 0)) {
                 const totalRefs = refsUsed.character.length + refsUsed.scene.length;
@@ -1476,21 +1698,15 @@
             
             container.appendChild(el);
             updateCanvasStats();
-            
-            // Auto scroll to new element
             el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         }
         
         function regenerateShot(id) {
-            // Find the shot and regenerate with same prompt but new random seed
             const shot = document.querySelector(`[data-id="${id}"]`);
             if (shot) {
                 const img = shot.querySelector('img');
-                if (img) {
-                    // Add loading state
-                    img.style.opacity = '0.5';
-                    generateWithAllPrompts(); // Will create new shot, user can delete old one
-                }
+                if (img) img.style.opacity = '0.5';
+                generateWithAllPrompts();
             }
         }
 
@@ -1680,13 +1896,14 @@
                 referenceImages,
                 apiProvider: document.getElementById('apiProvider').value,
                 apiBaseUrl: document.getElementById('apiBaseUrl').value,
+                modelSelect: document.getElementById('modelSelect').value,
                 imageModel: document.getElementById('imageModel').value
             };
-            localStorage.setItem('storyboard_ai_pro_v5', JSON.stringify(data));
+            localStorage.setItem('storyboard_ai_pro_v6', JSON.stringify(data));
         }
 
         function loadFromLocalStorage() {
-            const saved = localStorage.getItem('storyboard_ai_pro_v5');
+            const saved = localStorage.getItem('storyboard_ai_pro_v6');
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
@@ -1703,8 +1920,12 @@
                         renderRefGrid('character');
                         renderRefGrid('scene');
                     }
-                    if (data.apiProvider) document.getElementById('apiProvider').value = data.apiProvider;
+                    if (data.apiProvider) {
+                        document.getElementById('apiProvider').value = data.apiProvider;
+                        updateApiEndpoint();
+                    }
                     if (data.apiBaseUrl) document.getElementById('apiBaseUrl').value = data.apiBaseUrl;
+                    if (data.modelSelect) document.getElementById('modelSelect').value = data.modelSelect;
                     if (data.imageModel) document.getElementById('imageModel').value = data.imageModel;
                     
                     currentGrid = data.currentGrid || '5x5';
@@ -1712,11 +1933,16 @@
                     setGridSize(currentGrid);
                     setAspectRatio(currentAspectRatio);
                     renderScenesList();
+                    updateModelBadges();
                 } catch (e) {
                     console.error(e);
                 }
             }
         }
+        
+        // Listen for model changes to update badges
+        document.getElementById('modelSelect').addEventListener('change', updateModelBadges);
+        document.getElementById('imageModel').addEventListener('change', updateModelBadges);
     </script>
 </body>
 </html>
