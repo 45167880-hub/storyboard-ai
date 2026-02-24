@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 剧本分镜生成器 | Storyboard AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            overflow: hidden;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Canvas Grid Background */
+        .canvas-bg {
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* Drag Drop Zone */
+        .drop-zone {
+            border: 2px dashed rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); }
+        }
+        
+        .animate-glow {
+            animation: pulse-glow 3s infinite;
+        }
+        
+        .shot-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: move;
+        }
+        
+        .shot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        
+        .shot-card.selected {
+            ring: 2px solid #3b82f6;
+            box-shadow: 0 0 0 2px #3b82f6, 0 10px 40px rgba(59, 130, 246, 0.2);
+        }
+        
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: se-resize;
+            background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%);
+            border-radius: 0 0 4px 0;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .grid-overlay.active {
+            opacity: 1;
+        }
+        
+        /* Loading Animation */
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #333;
+            border-bottom-color: #3b82f6;
+            border-radius: 50%;
+            animation: rotation 1s linear infinite;
+        }
+        
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        /* File upload animation */
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .file-upload-toast {
+            animation: slideUp 0.3s ease;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="glass h-14 flex items-center justify-between px-6 z-50 relative border-b border-white/5">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white text-lg">S</div>
+            <h1 class="text-lg font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                Storyboard AI <span class="text-xs font-normal text-gray-500 ml-2">剧本分镜生成器</span>
+            </h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 text-xs text-gray-400">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                API 已连接
+            </div>
+            <button onclick="exportProject()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-md transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                导出项目
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Panel: Script & Settings -->
+        <aside class="w-[450px] glass border-r border-white/5 flex flex-col z-40">
+            
+            <!-- API Settings -->
+            <div class="p-4 border-b border-white/5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">API 配置</label>
+                    <button onclick="toggleApiSettings()" class="text-xs text-blue-400 hover:text-blue-300">配置</button>
+                </div>
+                <div id="apiSettings" class="space-y-2">
+                    <input type="password" id="apiKey" placeholder="输入 Toapis API Key" class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    <div class="flex gap-2">
+                        <select id="modelSelect" class="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                            <option value="gpt-4o">GPT-4o (剧本拆解)</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini (快速)</option>
+                            <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                            <option value="gemini-3.0">Gemini 3.0 (Google)</option>
+                        </select>
+                        <select id="imageModel" class="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                            <option value="gpt-4o-image">GPT-4o Image</option>
+                            <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
+                            <option value="nano-banana-pro">Nano Banana Pro</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Style Settings (Prefix) -->
+            <div class="p-4 border-b border-white/5 space-y-3">
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    风格设定 (前缀提示词)
+                    <span class="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Prefix</span>
+                </label>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">氛围基调 Atmosphere</label>
+                        <input type="text" id="atmosphere" placeholder="例如：赛博朋克、悬疑紧张、温馨治愈..." class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">色彩倾向 Color Palette</label>
+                        <input type="text" id="colorPalette" placeholder="例如：青橙对比、黑白胶片、暖色调..." class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">光影质感 Lighting</label>
+                        <input type="text" id="lighting" placeholder="例如：硬光剪影、柔光散射、霓虹反光..." class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script Input with Drag Drop -->
+            <div class="flex-1 flex flex-col min-h-0">
+                <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">剧本输入</label>
+                    <div class="flex gap-2">
+                        <button onclick="analyzeScript()" class="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            AI 拆解
+                        </button>
+                        <button onclick="clearScript()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs rounded transition-colors">清空</button>
+                    </div>
+                </div>
+                
+                <!-- Drag Drop Zone -->
+                <div class="px-4 pt-2">
+                    <div id="dropZone" class="drop-zone rounded-lg p-4 text-center cursor-pointer hover:border-white/30 transition-colors">
+                        <input type="file" id="fileInput" accept=".doc,.docx,.txt" class="hidden" onchange="handleFileSelect(event)">
+                        <div class="flex flex-col items-center gap-2 text-gray-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <span class="text-xs">拖拽 Word 文件到此处，或点击上传</span>
+                            <span class="text-[10px] text-gray-600">支持 .doc, .docx, .txt</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Upload Toast -->
+                <div id="uploadToast" class="hidden px-4 py-2">
+                    <div class="file-upload-toast bg-green-500/20 border border-green-500/30 rounded px-3 py-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span id="uploadFileName" class="text-xs text-green-400 truncate flex-1"></span>
+                        <button onclick="clearUpload()" class="text-green-400 hover:text-green-300">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 p-4 overflow-y-auto">
+                    <textarea id="scriptInput" placeholder="在此粘贴完整剧本内容，或拖拽 Word 文件到上方...&#10;例如：&#10;第一场 雨夜追逐&#10;外景 街道 - 夜&#10;倾盆大雨中，主角从巷口冲出，身后传来脚步声。镜头特写：雨水顺着脸颊流下，眼神坚定..." class="w-full h-full bg-black/30 border border-white/10 rounded-lg p-4 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none leading-relaxed"></textarea>
+                </div>
+            </div>
+
+            <!-- Grid Settings (Suffix) -->
+            <div class="p-4 border-t border-white/5 space-y-3 bg-black/20">
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>布局设置 (后缀提示词)</span>
+                    <span class="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">Suffix</span>
+                </label>
+                
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setGridSize('3x3')" class="grid-btn px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-grid="3x3">
+                        <div class="grid grid-cols-3 gap-0.5 w-8 h-8 mx-auto mb-1 opacity-50">
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                        </div>
+                        3×3
+                    </button>
+                    <button onclick="setGridSize('4x4')" class="grid-btn px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-grid="4x4">
+                        <div class="grid grid-cols-4 gap-0.5 w-8 h-8 mx-auto mb-1 opacity-50">
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                        </div>
+                        4×4
+                    </button>
+                    <button onclick="setGridSize('5x5')" class="grid-btn active px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 rounded text-xs transition-all text-center text-blue-400" data-grid="5x5">
+                        <div class="grid grid-cols-5 gap-0.5 w-8 h-8 mx-auto mb-1 opacity-50">
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                            <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
+                        </div>
+                        5×5
+                    </button>
+                </div>
+                
+                <div class="text-[10px] text-gray-600 mono bg-black/30 p-2 rounded border border-white/5 truncate">
+                    "shot": "5x5 Cinematic Storyboard Layout..."
+                </div>
+            </div>
+
+            <!-- Scenes List -->
+            <div class="h-1/3 min-h-[200px] border-t border-white/5 flex flex-col bg-black/20">
+                <div class="p-3 border-b border-white/5 flex items-center justify-between bg-white/5">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">场次列表</label>
+                    <span id="sceneCount" class="text-xs text-gray-600">0 场</span>
+                </div>
+                <div id="scenesList" class="flex-1 overflow-y-auto p-2 space-y-2">
+                    <!-- Scenes will be inserted here -->
+                    <div class="text-center text-gray-600 text-xs py-8 italic">暂无场次，请先输入剧本并点击"AI 拆解"</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Panel: Canvas -->
+        <main class="flex-1 relative bg-[#0a0a0a] overflow-hidden">
+            <!-- Toolbar -->
+            <div class="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
+                <div class="glass-panel px-4 py-2 rounded-full flex items-center gap-4 pointer-events-auto">
+                    <button onclick="clearCanvas()" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        清空画布
+                    </button>
+                    <div class="w-px h-4 bg-white/10"></div>
+                    <button onclick="toggleGrid()" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        显示网格
+                    </button>
+                    <div class="w-px h-4 bg-white/10"></div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500">缩放</span>
+                        <input type="range" id="zoomSlider" min="50" max="150" value="100" class="w-20" oninput="updateZoom(this.value)">
+                        <span id="zoomValue" class="text-xs text-gray-400 mono w-8">100%</span>
+                    </div>
+                </div>
+                
+                <div class="glass-panel px-4 py-2 rounded-full pointer-events-auto">
+                    <span id="canvasStats" class="text-xs text-gray-400">0 镜头 | 画布就绪</span>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div id="canvasContainer" class="w-full h-full canvas-bg overflow-auto relative" onclick="deselectAll(event)">
+                <div id="canvas" class="relative min-w-full min-h-full p-8 transition-transform origin-center" style="width: 3000px; height: 2000px;">
+                    <!-- Grid Overlay -->
+                    <div id="gridOverlay" class="grid-overlay active">
+                        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                                    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#grid)" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Shots will be placed here -->
+                    <div id="shotsContainer" class="relative w-full h-full"></div>
+                </div>
+            </div>
+
+            <!-- Floating Action Button -->
+            <button onclick="generateAllShots()" id="generateAllBtn" class="absolute bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-40 animate-glow group">
+                <svg class="w-6 h-6 text-white group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            </button>
+        </main>
+    </div>
+
+    <!-- Shot Detail Modal -->
+    <div id="shotModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="glass w-[600px] max-h-[80vh] rounded-2xl border border-white/10 flex flex-col shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="shotModalContent">
+            <div class="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-white">编辑镜头 <span id="modalShotId" class="text-blue-400 mono text-sm ml-2"></span></h3>
+                <button onclick="closeShotModal()" class="text-gray-500 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4 overflow-y-auto">
+                <div>
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">镜头描述 (中缀)</label>
+                    <textarea id="modalShotDesc" rows="4" class="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">镜头类型</label>
+                        <select id="modalShotType" class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                            <option value="广角">广角 Wide</option>
+                            <option value="中景">中景 Medium</option>
+                            <option value="特写">特写 Close-up</option>
+                            <option value="过肩">过肩 OTS</option>
+                            <option value="POV">主观视角 POV</option>
+                            <option value="航拍">航拍 Aerial</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">运镜方式</label>
+                        <select id="modalCameraMove" class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                            <option value="固定">固定 Static</option>
+                            <option value="推">推 Push in</option>
+                            <option value="拉">拉 Pull out</option>
+                            <option value="摇">摇 Pan</option>
+                            <option value="移">移 Track</option>
+                            <option value="跟">跟 Follow</option>
+                            <option value="手持">手持 Handheld</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <label class="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2 block">完整提示词预览</label>
+                    <div id="modalFullPrompt" class="text-xs text-gray-400 mono leading-relaxed break-all"></div>
+                </div>
+
+                <div id="modalImageContainer" class="aspect-video bg-black/50 rounded-lg border border-white/5 flex items-center justify-center overflow-hidden relative group">
+                    <div id="modalImagePlaceholder" class="text-gray-600 text-sm">点击生成图像</div>
+                    <img id="modalImage" class="absolute inset-0 w-full h-full object-cover hidden" alt="">
+                    <button onclick="regenerateShotImage()" class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        重新生成
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-white/5 flex justify-end gap-3">
+                <button onclick="closeShotModal()" class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">取消</button>
+                <button onclick="saveShotEdit()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/90 backdrop-blur-md">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <p id="loadingText" class="text-gray-400 text-sm animate-pulse">正在生成...</p>
+        </div>
+    </div>
+
+    <script>
+        // Global State
+        let scenes = [];
+        let shots = [];
+        let selectedShot = null;
+        let currentGrid = '5x5';
+        let zoom = 100;
+        let draggedElement = null;
+        let dragOffset = { x: 0, y: 0 };
+        let currentEditingShot = null;
+        let uploadedFileName = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            setupCanvasInteractions();
+            setupDragDrop();
+        });
+
+        // Drag & Drop Setup
+        function setupDragDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            // Click to upload
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            // Drag events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.remove('drag-over');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            const validTypes = [
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+                'application/msword', // .doc
+                'text/plain' // .txt
+            ];
+
+            if (!validTypes.includes(file.type) && !file.name.endsWith('.docx') && !file.name.endsWith('.doc') && !file.name.endsWith('.txt')) {
+                alert('请上传 Word 文档 (.doc, .docx) 或文本文件 (.txt)');
+                return;
+            }
+
+            uploadedFileName = file.name;
+            showUploadToast(file.name);
+
+            // Read file
+            if (file.name.endsWith('.txt')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('scriptInput').value = e.target.result;
+                };
+                reader.readAsText(file);
+            } else {
+                // Word document
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const arrayBuffer = e.target.result;
+                    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                        .then(result => {
+                            document.getElementById('scriptInput').value = result.value;
+                            // Optional: Show messages if any
+                            if (result.messages.length > 0) {
+                                console.log('Word conversion messages:', result.messages);
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error reading Word file:', err);
+                            alert('读取 Word 文件失败，请尝试转换为 .txt 格式');
+                        });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function showUploadToast(filename) {
+            const toast = document.getElementById('uploadToast');
+            const nameSpan = document.getElementById('uploadFileName');
+            nameSpan.textContent = `已加载: ${filename}`;
+            toast.classList.remove('hidden');
+        }
+
+        function clearUpload() {
+            uploadedFileName = null;
+            document.getElementById('uploadToast').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('scriptInput').value = '';
+        }
+
+        // API Functions
+        async function analyzeScript() {
+            const script = document.getElementById('scriptInput').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            if (!script.trim()) {
+                alert('请输入剧本内容');
+                return;
+            }
+            
+            if (!apiKey) {
+                alert('请输入 API Key');
+                return;
+            }
+
+            showLoading('正在分析剧本结构...');
+
+            try {
+                // Simulate AI analysis (Replace with actual Toapis API call)
+                const prompt = `请将以下剧本拆解为场次和镜头。按JSON格式返回：{"scenes":[{"id":"场次号","title":"场次标题","shots":[{"id":"镜头号","description":"镜头描述","type":"镜头类型"}]}]}\n\n剧本内容：\n${script}`;
+                
+                // Mock AI response for demo
+                await simulateAIAnalysis(script);
+                
+                renderScenesList();
+                generateShotsOnCanvas();
+                hideLoading();
+                saveToLocalStorage();
+            } catch (error) {
+                hideLoading();
+                alert('分析失败: ' + error.message);
+            }
+        }
+
+        async function simulateAIAnalysis(script) {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Parse script roughly (in real app, this would be AI response)
+            const lines = script.split('\n').filter(l => l.trim());
+            scenes = [];
+            let currentScene = null;
+            let shotCounter = 1;
+            
+            lines.forEach((line, idx) => {
+                if (line.includes('场') || line.includes('景') || line.includes('EXT') || line.includes('INT')) {
+                    if (currentScene) scenes.push(currentScene);
+                    currentScene = {
+                        id: `SC${scenes.length + 1}`,
+                        title: line.trim(),
+                        shots: []
+                    };
+                } else if (currentScene && line.length > 10) {
+                    currentScene.shots.push({
+                        id: `${currentScene.id}_SHOT${shotCounter++}`,
+                        description: line.trim(),
+                        type: '中景',
+                        cameraMove: '固定',
+                        generated: false
+                    });
+                }
+            });
+            
+            if (currentScene) scenes.push(currentScene);
+            
+            // Flatten shots for canvas
+            shots = scenes.flatMap(s => s.shots.map((shot, idx) => ({
+                ...shot,
+                sceneId: s.id,
+                sceneTitle: s.title,
+                x: 100 + (idx % 5) * 320,
+                y: 100 + Math.floor(idx / 5) * 240,
+                width: 300,
+                height: 200,
+                scale: 1,
+                image: null
+            })));
+        }
+
+        // Canvas Functions
+        function generateShotsOnCanvas() {
+            const container = document.getElementById('shotsContainer');
+            container.innerHTML = '';
+            
+            shots.forEach((shot, index) => {
+                createShotElement(shot, index);
+            });
+            
+            updateCanvasStats();
+        }
+
+        function createShotElement(shot, index) {
+            const container = document.getElementById('shotsContainer');
+            const el = document.createElement('div');
+            
+            el.className = 'shot-card absolute bg-gray-900 rounded-lg border border-white/10 overflow-hidden shadow-xl';
+            el.style.left = shot.x + 'px';
+            el.style.top = shot.y + 'px';
+            el.style.width = shot.width + 'px';
+            el.style.height = shot.height + 'px';
+            el.dataset.id = shot.id;
+            
+            const prefix = getPrefixPrompt();
+            const suffix = getSuffixPrompt();
+            
+            el.innerHTML = `
+                <div class="h-full flex flex-col">
+                    <div class="h-6 bg-white/5 border-b border-white/5 flex items-center justify-between px-2 cursor-move handle">
+                        <span class="text-[10px] text-gray-500 mono">${shot.id}</span>
+                        <div class="flex gap-1">
+                            <button onclick="editShot('${shot.id}', event)" class="text-gray-600 hover:text-blue-400 transition-colors">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            </button>
+                            <button onclick="deleteShot('${shot.id}', event)" class="text-gray-600 hover:text-red-400 transition-colors">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex-1 relative bg-black/40 group cursor-pointer" onclick="selectShot('${shot.id}', event)">
+                        ${shot.image ? `
+                            <img src="${shot.image}" class="w-full h-full object-cover" alt="">
+                        ` : `
+                            <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-600 p-4 text-center">
+                                <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <span class="text-xs line-clamp-3">${shot.description}</span>
+                                <button onclick="generateShotImage('${shot.id}', event)" class="mt-2 px-3 py-1 bg-blue-600/80 hover:bg-blue-500 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                    生成图像
+                                </button>
+                            </div>
+                        `}
+                        <div class="resize-handle" onmousedown="startResize(event, '${shot.id}')"></div>
+                    </div>
+                    <div class="h-8 bg-white/5 border-t border-white/5 px-2 flex items-center justify-between">
+                        <span class="text-[10px] text-gray-400 truncate flex-1">${shot.type} | ${shot.cameraMove}</span>
+                        <div class="flex gap-1">
+                            <button onclick="zoomShot('${shot.id}', 0.1, event)" class="text-gray-600 hover:text-white text-xs">+</button>
+                            <button onclick="zoomShot('${shot.id}', -0.1, event)" class="text-gray-600 hover:text-white text-xs">-</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add drag functionality
+            const handle = el.querySelector('.handle');
+            handle.addEventListener('mousedown', (e) => startDrag(e, shot.id));
+            
+            container.appendChild(el);
+        }
+
+        // Drag & Drop
+        function startDrag(e, shotId) {
+            if (e.target.tagName === 'BUTTON') return;
+            
+            e.preventDefault();
+            draggedElement = document.querySelector(`[data-id="${shotId}"]`);
+            const shot = shots.find(s => s.id === shotId);
+            
+            dragOffset.x = e.clientX - shot.x;
+            dragOffset.y = e.clientY - shot.y;
+            
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function onDrag(e) {
+            if (!draggedElement) return;
+            
+            const canvas = document.getElementById('canvas');
+            const rect = canvas.getBoundingClientRect();
+            const zoomFactor = zoom / 100;
+            
+            const x = (e.clientX - rect.left - dragOffset.x) / zoomFactor;
+            const y = (e.clientY - rect.top - dragOffset.y) / zoomFactor;
+            
+            const shotId = draggedElement.dataset.id;
+            const shot = shots.find(s => s.id === shotId);
+            
+            shot.x = Math.max(0, x);
+            shot.y = Math.max(0, y);
+            
+            draggedElement.style.left = shot.x + 'px';
+            draggedElement.style.top = shot.y + 'px';
+        }
+
+        function stopDrag() {
+            draggedElement = null;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            saveToLocalStorage();
+        }
+
+        // Resize
+        function startResize(e, shotId) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const el = document.querySelector(`[data-id="${shotId}"]`);
+            const shot = shots.find(s => s.id === shotId);
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = shot.width;
+            const startHeight = shot.height;
+            
+            function onResize(ev) {
+                const dx = (ev.clientX - startX) / (zoom / 100);
+                const dy = (ev.clientY - startY) / (zoom / 100);
+                
+                shot.width = Math.max(150, startWidth + dx);
+                shot.height = Math.max(100, startHeight + dy);
+                
+                el.style.width = shot.width + 'px';
+                el.style.height = shot.height + 'px';
+            }
+            
+            function stopResize() {
+                document.removeEventListener('mousemove', onResize);
+                document.removeEventListener('mouseup', stopResize);
+                saveToLocalStorage();
+            }
+            
+            document.addEventListener('mousemove', onResize);
+            document.addEventListener('mouseup', stopResize);
+        }
+
+        // Shot Operations
+        function selectShot(id, event) {
+            if (event) event.stopPropagation();
+            
+            document.querySelectorAll('.shot-card').forEach(el => el.classList.remove('selected'));
+            const el = document.querySelector(`[data-id="${id}"]`);
+            if (el) el.classList.add('selected');
+            
+            selectedShot = id;
+        }
+
+        function deselectAll(event) {
+            if (event.target.id === 'canvas' || event.target.id === 'canvasContainer') {
+                document.querySelectorAll('.shot-card').forEach(el => el.classList.remove('selected'));
+                selectedShot = null;
+            }
+        }
+
+        function deleteShot(id, event) {
+            if (event) event.stopPropagation();
+            
+            if (confirm('确定要删除这个镜头吗？')) {
+                shots = shots.filter(s => s.id !== id);
+                const el = document.querySelector(`[data-id="${id}"]`);
+                if (el) el.remove();
+                updateCanvasStats();
+                saveToLocalStorage();
+            }
+        }
+
+        function zoomShot(id, delta, event) {
+            if (event) event.stopPropagation();
+            
+            const shot = shots.find(s => s.id === id);
+            shot.scale = Math.max(0.5, Math.min(2, (shot.scale || 1) + delta));
+            
+            const el = document.querySelector(`[data-id="${id}"]`);
+            if (el) {
+                el.style.transform = `scale(${shot.scale})`;
+            }
+            saveToLocalStorage();
+        }
+
+        // Image Generation
+        async function generateShotImage(shotId, event) {
+            if (event) event.stopPropagation();
+            
+            const apiKey = document.getElementById('apiKey').value;
+            if (!apiKey) {
+                alert('请先配置 API Key');
+                return;
+            }
+
+            const shot = shots.find(s => s.id === shotId);
+            showLoading(`正在生成 ${shotId} 的图像...`);
+
+            try {
+                const prefix = getPrefixPrompt();
+                const suffix = getSuffixPrompt();
+                const fullPrompt = `${prefix} ${shot.description} ${suffix}`;
+                
+                // Call Toapis Image API
+                const response = await fetch('https://api.toapis.com/v1/images/generations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: document.getElementById('imageModel').value,
+                        prompt: fullPrompt,
+                        n: 1,
+                        size: "1024x1024",
+                        quality: "standard"
+                    })
+                });
+
+                if (!response.ok) throw new Error('API 请求失败');
+                
+                const data = await response.json();
+                shot.image = data.data[0].url;
+                shot.generated = true;
+                
+                // Update UI
+                const el = document.querySelector(`[data-id="${shotId}"]`);
+                if (el) {
+                    const container = el.querySelector('.flex-1.relative');
+                    container.innerHTML = `
+                        <img src="${shot.image}" class="w-full h-full object-cover" alt="">
+                        <div class="resize-handle" onmousedown="startResize(event, '${shotId}')"></div>
+                    `;
+                }
+                
+                hideLoading();
+                saveToLocalStorage();
+            } catch (error) {
+                hideLoading();
+                // Fallback to placeholder for demo
+                shot.image = `https://picsum.photos/seed/${shotId}/400/300`;
+                const el = document.querySelector(`[data-id="${shotId}"]`);
+                if (el) {
+                    const container = el.querySelector('.flex-1.relative');
+                    container.innerHTML = `
+                        <img src="${shot.image}" class="w-full h-full object-cover" alt="">
+                        <div class="resize-handle" onmousedown="startResize(event, '${shotId}')"></div>
+                    `;
+                }
+                saveToLocalStorage();
+            }
+        }
+
+        async function generateAllShots() {
+            const ungenerated = shots.filter(s => !s.image);
+            if (ungenerated.length === 0) {
+                alert('所有镜头已生成完毕');
+                return;
+            }
+            
+            for (let i = 0; i < ungenerated.length; i++) {
+                await generateShotImage(ungenerated[i].id);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+            }
+        }
+
+        // Prompt Construction
+        function getPrefixPrompt() {
+            const atmosphere = document.getElementById('atmosphere').value || '电影感';
+            const color = document.getElementById('colorPalette').value || ' cinematic color grading';
+            const lighting = document.getElementById('lighting').value || 'dramatic lighting';
+            return `${atmosphere}, ${color}, ${lighting},`;
+        }
+
+        function getSuffixPrompt() {
+            const layouts = {
+                '3x3': '3x3 Cinematic Storyboard Layout, 3x3 Grid, contains 9 independent frames, 16:9 aspect ratio, professional movie production storyboard',
+                '4x4': '4x4 Cinematic Storyboard Layout, 4x4 Grid, contains 16 independent frames, 16:9 aspect ratio, professional movie production storyboard',
+                '5x5': '5x5 Cinematic Storyboard Layout, 5x5 Grid, contains 25 independent frames, 16:9 aspect ratio, professional sci-fi movie production storyboard, rigorous visual structure'
+            };
+            return layouts[currentGrid] || layouts['5x5'];
+        }
+
+        // UI Functions
+        function setGridSize(size) {
+            currentGrid = size;
+            document.querySelectorAll('.grid-btn').forEach(btn => {
+                if (btn.dataset.grid === size) {
+                    btn.classList.add('active', 'bg-blue-600/20', 'border-blue-500/50', 'text-blue-400');
+                    btn.classList.remove('bg-white/5', 'border-white/10');
+                } else {
+                    btn.classList.remove('active', 'bg-blue-600/20', 'border-blue-500/50', 'text-blue-400');
+                    btn.classList.add('bg-white/5', 'border-white/10');
+                }
+            });
+            saveToLocalStorage();
+        }
+
+        function toggleGrid() {
+            const overlay = document.getElementById('gridOverlay');
+            overlay.classList.toggle('active');
+        }
+
+        function updateZoom(value) {
+            zoom = value;
+            document.getElementById('zoomValue').textContent = value + '%';
+            document.getElementById('canvas').style.transform = `scale(${value / 100})`;
+        }
+
+        function clearCanvas() {
+            if (confirm('确定要清空画布吗？所有镜头将被删除。')) {
+                shots = [];
+                document.getElementById('shotsContainer').innerHTML = '';
+                updateCanvasStats();
+                saveToLocalStorage();
+            }
+        }
+
+        function clearScript() {
+            document.getElementById('scriptInput').value = '';
+            scenes = [];
+            renderScenesList();
+            clearUpload();
+        }
+
+        function renderScenesList() {
+            const container = document.getElementById('scenesList');
+            document.getElementById('sceneCount').textContent = `${scenes.length} 场`;
+            
+            if (scenes.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-600 text-xs py-8 italic">暂无场次，请先输入剧本并点击"AI 拆解"</div>';
+                return;
+            }
+            
+            container.innerHTML = scenes.map(scene => `
+                <div class="glass-panel rounded-lg p-3 border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-blue-400 mono">${scene.id}</span>
+                        <span class="text-[10px] text-gray-500">${scene.shots.length} 镜头</span>
+                    </div>
+                    <h4 class="text-sm text-gray-300 mb-2 truncate">${scene.title}</h4>
+                    <div class="space-y-1">
+                        ${scene.shots.map(shot => `
+                            <div class="text-[10px] text-gray-500 flex items-center gap-2 py-1 px-2 bg-black/20 rounded cursor-pointer hover:bg-white/5 transition-colors" onclick="focusOnShot('${shot.id}')">
+                                <span class="mono text-gray-600">${shot.id.split('_')[1]}</span>
+                                <span class="truncate flex-1">${shot.description.substring(0, 20)}...</span>
+                                ${shot.image ? '<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function focusOnShot(shotId) {
+            const shot = shots.find(s => s.id === shotId);
+            if (shot) {
+                selectShot(shotId);
+                const container = document.getElementById('canvasContainer');
+                const el = document.querySelector(`[data-id="${shotId}"]`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                }
+            }
+        }
+
+        function editShot(id, event) {
+            if (event) event.stopPropagation();
+            
+            const shot = shots.find(s => s.id === id);
+            currentEditingShot = shot;
+            
+            document.getElementById('modalShotId').textContent = id;
+            document.getElementById('modalShotDesc').value = shot.description;
+            document.getElementById('modalShotType').value = shot.type;
+            document.getElementById('modalCameraMove').value = shot.cameraMove;
+            
+            updateModalPrompt();
+            
+            const img = document.getElementById('modalImage');
+            const placeholder = document.getElementById('modalImagePlaceholder');
+            
+            if (shot.image) {
+                img.src = shot.image;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+            
+            const modal = document.getElementById('shotModal');
+            const content = document.getElementById('shotModalContent');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeShotModal() {
+            const modal = document.getElementById('shotModal');
+            const content = document.getElementById('shotModalContent');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                currentEditingShot = null;
+            }, 300);
+        }
+
+        function saveShotEdit() {
+            if (!currentEditingShot) return;
+            
+            currentEditingShot.description = document.getElementById('modalShotDesc').value;
+            currentEditingShot.type = document.getElementById('modalShotType').value;
+            currentEditingShot.cameraMove = document.getElementById('modalCameraMove').value;
+            
+            // Refresh canvas
+            generateShotsOnCanvas();
+            closeShotModal();
+            saveToLocalStorage();
+        }
+
+        function updateModalPrompt() {
+            if (!currentEditingShot) return;
+            const prefix = getPrefixPrompt();
+            const suffix = getSuffixPrompt();
+            const fullPrompt = `${prefix} ${currentEditingShot.description} ${suffix}`;
+            document.getElementById('modalFullPrompt').textContent = fullPrompt;
+        }
+
+        async function regenerateShotImage() {
+            if (currentEditingShot) {
+                await generateShotImage(currentEditingShot.id);
+                const shot = shots.find(s => s.id === currentEditingShot.id);
+                if (shot.image) {
+                    document.getElementById('modalImage').src = shot.image;
+                    document.getElementById('modalImage').classList.remove('hidden');
+                    document.getElementById('modalImagePlaceholder').classList.add('hidden');
+                }
+            }
+        }
+
+        function updateCanvasStats() {
+            const generated = shots.filter(s => s.image).length;
+            document.getElementById('canvasStats').textContent = `${shots.length} 镜头 | ${generated} 已生成`;
+        }
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('loadingOverlay').classList.remove('flex');
+        }
+
+        function toggleApiSettings() {
+            const el = document.getElementById('apiSettings');
+            el.classList.toggle('hidden');
+        }
+
+        // Local Storage
+        function saveToLocalStorage() {
+            const data = {
+                scenes,
+                shots,
+                currentGrid,
+                style: {
+                    atmosphere: document.getElementById('atmosphere').value,
+                    color: document.getElementById('colorPalette').value,
+                    lighting: document.getElementById('lighting').value
+                }
+            };
+            localStorage.setItem('storyboard_project', JSON.stringify(data));
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('storyboard_project');
+            if (saved) {
+                const data = JSON.parse(saved);
+                scenes = data.scenes || [];
+                shots = data.shots || [];
+                currentGrid = data.currentGrid || '5x5';
+                
+                if (data.style) {
+                    document.getElementById('atmosphere').value = data.style.atmosphere || '';
+                    document.getElementById('colorPalette').value = data.style.color || '';
+                    document.getElementById('lighting').value = data.style.lighting || '';
+                }
+                
+                setGridSize(currentGrid);
+                renderScenesList();
+                generateShotsOnCanvas();
+            }
+        }
+
+        function exportProject() {
+            const data = {
+                scenes,
+                shots,
+                exportDate: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `storyboard_project_${Date.now()}.json`;
+            a.click();
+        }
+
+        function setupCanvasInteractions() {
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' && selectedShot) {
+                    deleteShot(selectedShot);
+                }
+                if (e.key === 'Escape') {
+                    closeShotModal();
+                }
+            });
+        }
+
+        // Update prompt preview when style changes
+        ['atmosphere', 'colorPalette', 'lighting'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                if (document.getElementById('shotModal').classList.contains('flex')) {
+                    updateModalPrompt();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
