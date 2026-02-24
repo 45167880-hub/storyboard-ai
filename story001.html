@@ -56,7 +56,7 @@
             border: 1px solid rgba(255,255,255,0.05);
         }
         
-        /* Drag Drop Zone */
+        /* Drag Drop Zone - 缩小 */
         .drop-zone {
             border: 2px dashed rgba(59, 130, 246, 0.3);
             background: rgba(59, 130, 246, 0.05);
@@ -91,27 +91,68 @@
         .scene-item {
             transition: all 0.3s ease;
             border-left: 3px solid transparent;
+            margin-bottom: 2px;
         }
         .scene-item:hover {
             background: rgba(255,255,255,0.05);
             border-left-color: #3b82f6;
         }
-        .scene-item.active {
-            background: rgba(59, 130, 246, 0.15);
-            border-left-color: #3b82f6;
-        }
-        .scene-item.selected-for-gen {
-            background: rgba(16, 185, 129, 0.15);
-            border-left-color: #10b981;
-        }
+        
+        /* Shot List - 中缀选择区域 */
         .shot-list {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease;
         }
         .shot-list.expanded {
-            max-height: 600px;
+            max-height: 500px;
             overflow-y: auto;
+        }
+        
+        /* Shot Item - 中缀选择项 */
+        .shot-item {
+            transition: all 0.2s;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            position: relative;
+            padding: 8px 12px;
+            margin-bottom: 2px;
+            border-radius: 4px;
+            user-select: none;
+        }
+        .shot-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+        }
+        .shot-item.selected {
+            background: rgba(59, 130, 246, 0.25);
+            border-left-color: #3b82f6;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+        }
+        .shot-item.has-image {
+            border-left-color: #10b981;
+        }
+        .shot-item.has-image.selected {
+            background: rgba(16, 185, 129, 0.2);
+            border-left-color: #10b981;
+        }
+        
+        /* Selection Indicator */
+        .shot-item::before {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: transparent;
+            transition: all 0.2s;
+        }
+        .shot-item.selected::before {
+            background: #3b82f6;
+            box-shadow: 0 0 8px #3b82f6;
         }
         
         /* Shot Card */
@@ -264,48 +305,6 @@
             animation: glow 2s ease-in-out infinite;
         }
 
-        /* Checkbox custom style */
-        .custom-checkbox {
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 3px;
-            background: transparent;
-            cursor: pointer;
-            position: relative;
-        }
-        .custom-checkbox:checked {
-            background: #10b981;
-            border-color: #10b981;
-        }
-        .custom-checkbox:checked::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 10px;
-        }
-
-        /* Shot item in list - Selection styles */
-        .shot-item {
-            transition: all 0.2s;
-            cursor: pointer;
-            border-left: 2px solid transparent;
-        }
-        .shot-item:hover {
-            background: rgba(255,255,255,0.08);
-        }
-        .shot-item.selected {
-            background: rgba(59, 130, 246, 0.2);
-            border-left-color: #3b82f6;
-        }
-        .shot-item.has-image {
-            border-left: 2px solid #10b981;
-        }
-        
         /* Scene selection checkbox */
         .scene-select-checkbox {
             appearance: none;
@@ -317,6 +316,7 @@
             cursor: pointer;
             position: relative;
             transition: all 0.2s;
+            flex-shrink: 0;
         }
         .scene-select-checkbox:checked {
             background: #3b82f6;
@@ -337,22 +337,22 @@
 <body class="h-screen w-screen flex flex-col">
 
     <!-- Header -->
-    <header class="glass h-14 flex items-center justify-between px-6 z-50 relative border-b border-white/5">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white text-lg">S</div>
-            <h1 class="text-lg font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                Storyboard AI <span class="text-xs font-normal text-gray-500 ml-2">剧本分镜生成器</span>
+    <header class="glass h-12 flex items-center justify-between px-4 z-50 relative border-b border-white/5 flex-shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">S</div>
+            <h1 class="text-base font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                Storyboard AI <span class="text-[10px] font-normal text-gray-500 ml-1">剧本分镜生成器</span>
             </h1>
         </div>
         
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
             <div class="flex items-center gap-2 text-xs text-gray-400">
                 <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 文生图模式
             </div>
-            <button onclick="exportProject()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-md transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                导出项目
+            <button onclick="exportProject()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-md transition-colors flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                导出
             </button>
         </div>
     </header>
@@ -361,22 +361,22 @@
     <div class="flex-1 flex overflow-hidden">
         
         <!-- Left Panel -->
-        <aside class="w-[480px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
+        <aside class="w-[420px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
             
-            <!-- API Settings -->
-            <div class="p-4 border-b border-white/5 space-y-3">
+            <!-- API Settings - 紧凑 -->
+            <div class="p-3 border-b border-white/5 space-y-2 flex-shrink-0">
                 <div class="flex items-center justify-between">
-                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">API 配置</label>
-                    <button onclick="toggleApiSettings()" class="text-xs text-blue-400 hover:text-blue-300">配置</button>
+                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">API 配置</label>
+                    <button onclick="toggleApiSettings()" class="text-[10px] text-blue-400 hover:text-blue-300">配置</button>
                 </div>
                 <div id="apiSettings" class="space-y-2">
-                    <input type="password" id="apiKey" placeholder="输入 Toapis API Key" class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    <input type="password" id="apiKey" placeholder="输入 Toapis API Key" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
                     <div class="flex gap-2">
-                        <select id="modelSelect" class="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                        <select id="modelSelect" class="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50">
                             <option value="gpt-4o">GPT-4o (剧本拆解)</option>
                             <option value="gpt-4o-mini">GPT-4o Mini (快速)</option>
                         </select>
-                        <select id="imageModel" class="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                        <select id="imageModel" class="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50">
                             <option value="gpt-4o-image">GPT-4o Image</option>
                             <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
                             <option value="nano-banana-pro">Nano Banana Pro</option>
@@ -385,89 +385,91 @@
                 </div>
             </div>
 
-            <!-- Style Settings (Prefix) -->
-            <div class="p-4 border-b border-white/5 space-y-3">
+            <!-- Style Settings (Prefix) - 紧凑 -->
+            <div class="p-3 border-b border-white/5 space-y-2 flex-shrink-0">
                 <div class="flex items-center justify-between">
-                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                         前缀提示词 (风格设定)
                     </label>
-                    <button onclick="regenerateStyle()" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                    <button onclick="regenerateStyle()" class="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         AI分析
                     </button>
                 </div>
                 
-                <div class="space-y-2">
-                    <input type="text" id="atmosphere" placeholder="氛围基调: 电影感、悬疑紧张、温馨治愈..." class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
-                    <input type="text" id="colorPalette" placeholder="色彩倾向: cinematic color grading, 青橙对比..." class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
-                    <input type="text" id="lighting" placeholder="光影质感: dramatic lighting, 柔光散射..." class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                <div class="space-y-1.5">
+                    <input type="text" id="atmosphere" placeholder="氛围基调: 电影感、悬疑紧张..." class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    <input type="text" id="colorPalette" placeholder="色彩倾向: cinematic color grading..." class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
+                    <input type="text" id="lighting" placeholder="光影质感: dramatic lighting..." class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50">
                 </div>
             </div>
 
-            <!-- Word Upload Section -->
-            <div class="p-4 border-b border-white/5">
-                <div class="section-header px-3 py-2 mb-3 rounded">
-                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <!-- Word Upload Section - 缩小 -->
+            <div class="p-3 border-b border-white/5 flex-shrink-0">
+                <div class="section-header px-2 py-1.5 mb-2 rounded">
+                    <label class="text-[10px] font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                         剧本文件上传
                     </label>
                 </div>
                 
-                <div id="dropZone" class="drop-zone rounded-lg p-4 text-center cursor-pointer mb-3">
+                <div id="dropZone" class="drop-zone rounded-lg p-2 text-center cursor-pointer mb-2">
                     <input type="file" id="fileInput" accept=".doc,.docx,.txt" class="hidden" onchange="handleFileSelect(event)">
                     
-                    <div id="dropZoneContent" class="flex flex-col items-center gap-2">
-                        <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <div id="dropZoneContent" class="flex items-center justify-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-300 font-medium">拖拽 Word 文件到此处</p>
-                            <p class="text-xs text-gray-500 mt-1">支持 .doc .docx .txt 格式</p>
+                        <div class="text-left">
+                            <p class="text-xs text-gray-300 font-medium">拖拽 Word 文件到此处</p>
+                            <p class="text-[10px] text-gray-500">支持 .doc .docx .txt</p>
                         </div>
                     </div>
 
-                    <div id="uploadSuccess" class="hidden flex-col items-center gap-2">
-                        <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <div id="uploadSuccess" class="hidden flex items-center justify-center gap-2">
+                        <div class="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-3 h-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         </div>
-                        <p class="text-sm text-green-400 font-medium">文件已加载</p>
-                        <p id="fileName" class="text-xs text-gray-400"></p>
-                        <button onclick="clearFile()" class="text-xs text-gray-500 hover:text-gray-300 underline">清除</button>
+                        <div class="text-left">
+                            <p class="text-xs text-green-400 font-medium">文件已加载</p>
+                            <p id="fileName" class="text-[10px] text-gray-400 leading-tight"></p>
+                        </div>
+                        <button onclick="event.stopPropagation(); clearFile()" class="text-[10px] text-gray-500 hover:text-gray-300 underline ml-2">清除</button>
                     </div>
                 </div>
 
-                <!-- 剧本内容编辑区域 -->
-                <div class="mb-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs text-gray-400">剧本内容</label>
-                        <button onclick="clearScript()" class="text-xs text-gray-500 hover:text-gray-300">清空</button>
+                <!-- 剧本内容编辑区域 - 加大 -->
+                <div class="mb-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[10px] text-gray-400">剧本内容</label>
+                        <button onclick="clearScript()" class="text-[10px] text-gray-500 hover:text-gray-300">清空</button>
                     </div>
-                    <textarea id="scriptInput" placeholder="在此输入或粘贴剧本内容，或上传Word文件自动填充...&#10;支持格式: 第X场 / 场景X / SCENE X / EXT./INT." class="w-full h-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none"></textarea>
+                    <textarea id="scriptInput" placeholder="在此输入或粘贴剧本内容，或上传Word文件自动填充...&#10;支持格式: 第X场 / 场景X / SCENE X / EXT./INT." class="w-full h-40 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none leading-relaxed"></textarea>
                 </div>
 
-                <button onclick="analyzeScript()" id="analyzeBtn" class="w-full py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                <button onclick="analyzeScript()" id="analyzeBtn" class="w-full py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     AI 拆解剧本
                 </button>
             </div>
 
-            <!-- Scenes List - 中缀选择区域 -->
+            <!-- Scenes List - 中缀选择区域 - 自适应高度 -->
             <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div class="p-3 border-b border-white/5 flex items-center justify-between bg-white/5">
-                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                        中缀选择 (点击选择镜头)
+                <div class="p-2 border-b border-white/5 flex items-center justify-between bg-white/5 flex-shrink-0">
+                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        中缀选择 <span class="text-gray-600 font-normal">(点击选择镜头)</span>
                     </label>
                     <div class="flex items-center gap-2">
-                        <span id="sceneCount" class="text-xs text-gray-600">0 场</span>
-                        <button onclick="generateSelectedShots()" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors font-medium animate-pulse">
+                        <span id="sceneCount" class="text-[10px] text-gray-600">0 场</span>
+                        <button onclick="generateSelectedShots()" class="text-[10px] bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded transition-colors font-medium animate-pulse">
                             生成选中
                         </button>
                     </div>
                 </div>
                 
-                <div id="scenesList" class="flex-1 overflow-y-auto p-2 space-y-1">
+                <div id="scenesList" class="flex-1 overflow-y-auto p-1 space-y-1">
                     <div class="text-center text-gray-600 text-xs py-8 flex flex-col items-center gap-2">
                         <svg class="w-8 h-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -478,75 +480,75 @@
                 </div>
             </div>
 
-            <!-- Suffix Prompt Settings -->
-            <div class="p-4 border-t border-white/5 space-y-3 bg-black/20">
-                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+            <!-- Suffix Prompt Settings - 固定底部 -->
+            <div class="p-3 border-t border-white/5 space-y-2 bg-black/20 flex-shrink-0">
+                <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-between">
                     <span class="flex items-center gap-2">
                         <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                        后缀提示词 (布局设置)
+                        后缀提示词 (布局)
                     </span>
                 </label>
                 
                 <!-- Grid Selection -->
-                <div class="space-y-2">
-                    <label class="text-xs text-gray-500">分镜格数</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="setGridSize('3x3')" class="grid-btn px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-grid="3x3">
-                            <div class="grid grid-cols-3 gap-0.5 w-6 h-6 mx-auto mb-1 opacity-60">
+                <div class="space-y-1">
+                    <label class="text-[10px] text-gray-500">分镜格数</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setGridSize('3x3')" class="grid-btn px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] transition-all text-center" data-grid="3x3">
+                            <div class="grid grid-cols-3 gap-0.5 w-4 h-4 mx-auto mb-1 opacity-60">
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                             </div>
-                            3×3 (9格)
+                            3×3
                         </button>
-                        <button onclick="setGridSize('4x4')" class="grid-btn px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-grid="4x4">
-                            <div class="grid grid-cols-4 gap-0.5 w-6 h-6 mx-auto mb-1 opacity-60">
+                        <button onclick="setGridSize('4x4')" class="grid-btn px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] transition-all text-center" data-grid="4x4">
+                            <div class="grid grid-cols-4 gap-0.5 w-4 h-4 mx-auto mb-1 opacity-60">
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                             </div>
-                            4×4 (16格)
+                            4×4
                         </button>
-                        <button onclick="setGridSize('5x5')" class="grid-btn active px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 rounded text-xs transition-all text-center text-blue-400" data-grid="5x5">
-                            <div class="grid grid-cols-5 gap-0.5 w-6 h-6 mx-auto mb-1 opacity-60">
+                        <button onclick="setGridSize('5x5')" class="grid-btn active px-2 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 rounded text-[10px] transition-all text-center text-blue-400" data-grid="5x5">
+                            <div class="grid grid-cols-5 gap-0.5 w-4 h-4 mx-auto mb-1 opacity-60">
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                                 <div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div><div class="bg-current rounded-[1px]"></div>
                             </div>
-                            5×5 (25格)
+                            5×5
                         </button>
                     </div>
                 </div>
 
                 <!-- Aspect Ratio Selection -->
-                <div class="space-y-2">
-                    <label class="text-xs text-gray-500">画面比例</label>
-                    <div class="flex gap-2">
-                        <button onclick="setAspectRatio('16:9')" class="aspect-btn flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center active" data-aspect="16:9">
-                            16:9 宽屏
+                <div class="space-y-1">
+                    <label class="text-[10px] text-gray-500">画面比例</label>
+                    <div class="flex gap-1">
+                        <button onclick="setAspectRatio('16:9')" class="aspect-btn flex-1 px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] transition-all text-center active" data-aspect="16:9">
+                            16:9
                         </button>
-                        <button onclick="setAspectRatio('4:3')" class="aspect-btn flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-aspect="4:3">
-                            4:3 标准
+                        <button onclick="setAspectRatio('4:3')" class="aspect-btn flex-1 px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] transition-all text-center" data-aspect="4:3">
+                            4:3
                         </button>
-                        <button onclick="setAspectRatio('2.39:1')" class="aspect-btn flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-aspect="2.39:1">
-                            2.39:1 电影
+                        <button onclick="setAspectRatio('2.39:1')" class="aspect-btn flex-1 px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] transition-all text-center" data-aspect="2.39:1">
+                            2.39:1
                         </button>
-                        <button onclick="setAspectRatio('1:1')" class="aspect-btn flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-all text-center" data-aspect="1:1">
-                            1:1 方形
+                        <button onclick="setAspectRatio('1:1')" class="aspect-btn flex-1 px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] transition-all text-center" data-aspect="1:1">
+                            1:1
                         </button>
                     </div>
                 </div>
 
                 <!-- Editable Suffix Prompt -->
-                <div class="space-y-2">
+                <div class="space-y-1">
                     <div class="flex items-center justify-between">
-                        <label class="text-xs text-gray-500">完整后缀提示词</label>
-                        <button onclick="resetSuffixPrompt()" class="text-xs text-gray-500 hover:text-gray-300">重置</button>
+                        <label class="text-[10px] text-gray-500">完整后缀提示词</label>
+                        <button onclick="resetSuffixPrompt()" class="text-[10px] text-gray-500 hover:text-gray-300">重置</button>
                     </div>
-                    <textarea id="suffixPrompt" rows="3" class="prompt-textarea w-full rounded-lg px-3 py-2 text-gray-300 resize-none" placeholder="后缀提示词将自动生成..."></textarea>
+                    <textarea id="suffixPrompt" rows="2" class="prompt-textarea w-full rounded-lg px-2 py-1.5 text-gray-300 resize-none text-[10px]" placeholder="后缀提示词将自动生成..."></textarea>
                 </div>
             </div>
         </aside>
@@ -555,25 +557,25 @@
         <main class="flex-1 relative bg-[#0a0a0a] overflow-hidden">
             <!-- Toolbar -->
             <div class="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
-                <div class="glass-panel px-4 py-2 rounded-full flex items-center gap-4 pointer-events-auto">
+                <div class="glass-panel px-3 py-2 rounded-full flex items-center gap-3 pointer-events-auto">
                     <button onclick="clearCanvas()" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         清空画布
                     </button>
-                    <div class="w-px h-4 bg-white/10"></div>
+                    <div class="w-px h-3 bg-white/10"></div>
                     <button onclick="toggleGrid()" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                        显示网格
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        网格
                     </button>
-                    <div class="w-px h-4 bg-white/10"></div>
-                    <div class="flex items-center gap-2">
+                    <div class="w-px h-3 bg-white/10"></div>
+                    <div class="flex items-center gap-1">
                         <span class="text-xs text-gray-500">缩放</span>
-                        <input type="range" id="zoomSlider" min="50" max="150" value="100" class="w-20" oninput="updateZoom(this.value)">
+                        <input type="range" id="zoomSlider" min="50" max="150" value="100" class="w-16" oninput="updateZoom(this.value)">
                         <span id="zoomValue" class="text-xs text-gray-400 mono w-8">100%</span>
                     </div>
                 </div>
                 
-                <div class="glass-panel px-4 py-2 rounded-full pointer-events-auto">
+                <div class="glass-panel px-3 py-2 rounded-full pointer-events-auto">
                     <span id="canvasStats" class="text-xs text-gray-400">画布就绪 | 等待生成</span>
                 </div>
             </div>
@@ -599,9 +601,9 @@
             </div>
 
             <!-- Floating Action Button -->
-            <button onclick="generateSelectedShots()" id="generateAllBtn" class="absolute bottom-8 right-8 px-6 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-40 animate-glow group" title="生成选中的中缀镜头">
-                <svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                <span class="text-white font-medium">生成选中</span>
+            <button onclick="generateSelectedShots()" id="generateAllBtn" class="absolute bottom-6 right-6 px-5 h-11 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-40 animate-glow group" title="生成选中的中缀镜头">
+                <svg class="w-5 h-5 text-white mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                <span class="text-white text-sm font-medium">生成选中</span>
             </button>
         </main>
     </div>
@@ -869,7 +871,7 @@
             }
         }
 
-        // 自动填充风格提示词
+        // 自动填充风格提示词 (前缀)
         function autoFillStyle(script) {
             const lowerScript = script.toLowerCase();
             
@@ -904,6 +906,15 @@
             const script = document.getElementById('scriptInput').value;
             if (script.trim()) {
                 autoFillStyle(script);
+                // 视觉反馈
+                const btn = document.querySelector('button[onclick="regenerateStyle()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 已刷新';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 1000);
+            } else {
+                alert('请先输入剧本内容');
             }
         }
 
@@ -1023,32 +1034,32 @@
                 const scenePartial = scene.shots.some(s => selectedShots.has(s.id)) && !sceneSelected;
                 
                 return `
-                <div class="scene-item rounded-lg mb-2 bg-white/5" data-scene-id="${scene.id}">
-                    <div class="p-3 flex items-center gap-2 cursor-pointer hover:bg-white/5" onclick="toggleScene('${scene.id}')">
+                <div class="scene-item rounded bg-white/5" data-scene-id="${scene.id}">
+                    <div class="p-2 flex items-center gap-2 cursor-pointer hover:bg-white/10" onclick="toggleScene('${scene.id}')">
                         <input type="checkbox" class="scene-select-checkbox" 
                                ${sceneSelected ? 'checked' : ''} 
                                ${scenePartial ? 'data-partial="true"' : ''}
                                onclick="event.stopPropagation(); toggleSceneSelection('${scene.id}')" 
                                title="选择整场">
-                        <span class="text-xs font-bold text-blue-400 mono bg-blue-500/10 px-2 py-0.5 rounded">${scene.id}</span>
-                        <span class="text-sm text-gray-300 truncate flex-1 font-medium">${scene.title}</span>
-                        <span class="text-[10px] text-gray-500 bg-black/30 px-2 py-1 rounded-full">${scene.shots.length} 镜头</span>
-                        <svg class="w-4 h-4 text-gray-500 transition-transform" id="arrow-${scene.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <span class="text-[10px] font-bold text-blue-400 mono bg-blue-500/10 px-1.5 py-0.5 rounded">${scene.id}</span>
+                        <span class="text-xs text-gray-300 truncate flex-1 font-medium">${scene.title}</span>
+                        <span class="text-[10px] text-gray-500 bg-black/30 px-1.5 py-0.5 rounded-full">${scene.shots.length} 镜</span>
+                        <svg class="w-3 h-3 text-gray-500 transition-transform" id="arrow-${scene.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </div>
-                    <div class="shot-list expanded px-3 pb-2" id="shots-${scene.id}">
+                    <div class="shot-list expanded bg-black/20" id="shots-${scene.id}">
                         ${scene.shots.map(shot => {
                             const isSelected = selectedShots.has(shot.id);
                             const hasImage = shot.image;
                             return `
-                            <div class="shot-item text-xs text-gray-400 py-2 px-3 bg-black/20 rounded mb-1 flex items-center gap-2 ${isSelected ? 'selected' : ''} ${hasImage ? 'has-image' : ''}" 
+                            <div class="shot-item text-[11px] text-gray-400 flex items-center gap-2 ${isSelected ? 'selected' : ''} ${hasImage ? 'has-image' : ''}" 
                                  onclick="toggleShotSelection('${shot.id}')" 
                                  title="点击选择作为中缀">
-                                <span class="mono text-gray-500 text-[10px] w-12">${shot.id.split('_')[1]}</span>
-                                <span class="truncate flex-1 ${isSelected ? 'text-blue-300' : ''}">${shot.description}</span>
-                                ${hasImage ? '<span class="text-[10px] text-green-400">✓</span>' : ''}
-                                ${isSelected ? '<span class="text-[10px] text-blue-400 ml-1">●</span>' : ''}
+                                <span class="mono text-gray-500 text-[9px] w-10 flex-shrink-0">${shot.id.split('_')[1]}</span>
+                                <span class="truncate flex-1 leading-snug ${isSelected ? 'text-blue-200 font-medium' : ''}">${shot.description}</span>
+                                ${hasImage ? '<span class="text-[10px] text-green-400 flex-shrink-0">✓</span>' : ''}
+                                ${isSelected ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0 shadow-[0_0_6px_#60a5fa]"></span>' : ''}
                             </div>
                         `}).join('')}
                     </div>
@@ -1077,6 +1088,9 @@
 
         // 切换单个镜头选择（中缀选择）
         function toggleShotSelection(shotId) {
+            // 防止事件冒泡导致触发其他点击
+            event.stopPropagation();
+            
             if (selectedShots.has(shotId)) {
                 selectedShots.delete(shotId);
             } else {
@@ -1102,7 +1116,7 @@
         // 生成选中的中缀镜头（在画布上生成）
         async function generateSelectedShots() {
             if (selectedShots.size === 0) {
-                alert('请先选择要生成的镜头（中缀）');
+                alert('请先选择要生成的镜头（点击左侧镜头作为中缀）');
                 return;
             }
             
@@ -1128,6 +1142,8 @@
                 }
             });
             
+            updateCanvasStats();
+            
             // 逐个生成
             for (let i = 0; i < selectedShotsArray.length; i++) {
                 const shot = selectedShotsArray[i];
@@ -1144,6 +1160,8 @@
         // Canvas Functions
         function createShotElement(shot, index) {
             const container = document.getElementById('shotsContainer');
+            if (!container) return;
+            
             const el = document.createElement('div');
             
             el.className = `shot-card absolute bg-gray-900 rounded-lg border overflow-hidden shadow-xl ${shot.image ? 'has-image border-green-500/30' : 'border-white/10'}`;
@@ -1152,9 +1170,6 @@
             el.style.width = shot.width + 'px';
             el.style.height = shot.height + 'px';
             el.dataset.id = shot.id;
-            
-            // 构建完整提示词预览
-            const fullPrompt = `${getPrefixPrompt()} ${shot.description} ${document.getElementById('suffixPrompt').value}`;
             
             el.innerHTML = `
                 <div class="h-full flex flex-col pointer-events-none">
