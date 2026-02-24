@@ -56,14 +56,35 @@
             border: 1px solid rgba(255,255,255,0.05);
         }
         
-        /* Drag Drop Zone */
+        /* Drag Drop Zone - 独立清晰的拖拽区域 */
         .drop-zone {
-            border: 2px dashed rgba(255,255,255,0.1);
+            border: 2px dashed rgba(59, 130, 246, 0.3);
+            background: rgba(59, 130, 246, 0.05);
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .drop-zone:hover::before {
+            left: 100%;
         }
         .drop-zone.drag-over {
             border-color: #3b82f6;
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.15);
+            transform: scale(1.02);
+        }
+        .drop-zone.has-file {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
         }
         
         /* Animations */
@@ -154,13 +175,10 @@
             border-radius: 2px;
         }
 
-        /* File upload animation */
-        @keyframes slideUp {
-            from { transform: translateY(10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .file-upload-toast {
-            animation: slideUp 0.3s ease;
+        /* Section headers */
+        .section-header {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent);
+            border-left: 3px solid #3b82f6;
         }
     </style>
 </head>
@@ -191,7 +209,7 @@
     <div class="flex-1 flex overflow-hidden">
         
         <!-- Left Panel: Script & Settings -->
-        <aside class="w-[450px] glass border-r border-white/5 flex flex-col z-40">
+        <aside class="w-[450px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
             
             <!-- API Settings -->
             <div class="p-4 border-b border-white/5 space-y-3">
@@ -240,45 +258,62 @@
                 </div>
             </div>
 
-            <!-- Script Input with Drag Drop -->
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">剧本输入</label>
-                    <div class="flex gap-2">
-                        <button onclick="analyzeScript()" class="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors flex items-center gap-1">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                            AI 拆解
-                        </button>
-                        <button onclick="clearScript()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs rounded transition-colors">清空</button>
-                    </div>
+            <!-- Word Upload Section - 独立的拖拽区域 -->
+            <div class="p-4 border-b border-white/5">
+                <div class="section-header px-3 py-2 mb-3 rounded">
+                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        剧本文件上传
+                    </label>
                 </div>
                 
-                <!-- Drag Drop Zone -->
-                <div class="px-4 pt-2">
-                    <div id="dropZone" class="drop-zone rounded-lg p-4 text-center cursor-pointer hover:border-white/30 transition-colors">
-                        <input type="file" id="fileInput" accept=".doc,.docx,.txt" class="hidden" onchange="handleFileSelect(event)">
-                        <div class="flex flex-col items-center gap-2 text-gray-500">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                            <span class="text-xs">拖拽 Word 文件到此处，或点击上传</span>
-                            <span class="text-[10px] text-gray-600">支持 .doc, .docx, .txt</span>
+                <!-- 拖拽区域 -->
+                <div id="dropZone" class="drop-zone rounded-lg p-6 text-center cursor-pointer mb-3">
+                    <input type="file" id="fileInput" accept=".doc,.docx,.txt" class="hidden" onchange="handleFileSelect(event)">
+                    
+                    <div id="dropZoneContent" class="flex flex-col items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-300 font-medium">拖拽 Word 文件到此处</p>
+                            <p class="text-xs text-gray-500 mt-1">或点击选择文件</p>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <span class="text-[10px] px-2 py-1 bg-white/5 rounded text-gray-500">.doc</span>
+                            <span class="text-[10px] px-2 py-1 bg-white/5 rounded text-gray-500">.docx</span>
+                            <span class="text-[10px] px-2 py-1 bg-white/5 rounded text-gray-500">.txt</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- File Upload Toast -->
-                <div id="uploadToast" class="hidden px-4 py-2">
-                    <div class="file-upload-toast bg-green-500/20 border border-green-500/30 rounded px-3 py-2 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span id="uploadFileName" class="text-xs text-green-400 truncate flex-1"></span>
-                        <button onclick="clearUpload()" class="text-green-400 hover:text-green-300">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
+                    <!-- 上传成功后的显示 -->
+                    <div id="uploadSuccess" class="hidden flex-col items-center gap-2">
+                        <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <p class="text-sm text-green-400 font-medium">文件已加载</p>
+                        <p id="fileName" class="text-xs text-gray-400"></p>
+                        <button onclick="clearFile()" class="text-xs text-gray-500 hover:text-gray-300 underline mt-1">清除文件</button>
                     </div>
                 </div>
 
-                <div class="flex-1 p-4 overflow-y-auto">
-                    <textarea id="scriptInput" placeholder="在此粘贴完整剧本内容，或拖拽 Word 文件到上方...&#10;例如：&#10;第一场 雨夜追逐&#10;外景 街道 - 夜&#10;倾盆大雨中，主角从巷口冲出，身后传来脚步声。镜头特写：雨水顺着脸颊流下，眼神坚定..." class="w-full h-full bg-black/30 border border-white/10 rounded-lg p-4 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none leading-relaxed"></textarea>
+                <!-- AI拆解按钮 - 放在拖拽区域下方，流程清晰 -->
+                <button onclick="analyzeScript()" id="analyzeBtn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    AI 拆解剧本
+                </button>
+            </div>
+
+            <!-- Script Input - 剧本输入框 -->
+            <div class="flex-1 flex flex-col min-h-[300px] p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">剧本内容</label>
+                    <button onclick="clearScript()" class="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        清空
+                    </button>
                 </div>
+                <textarea id="scriptInput" placeholder="在此粘贴剧本内容，或拖拽Word文件到上方上传区域...&#10;&#10;例如：&#10;第一场 雨夜追逐&#10;外景 街道 - 夜&#10;倾盆大雨中，主角从巷口冲出，身后传来脚步声。镜头特写：雨水顺着脸颊流下，眼神坚定..." class="flex-1 w-full bg-black/30 border border-white/10 rounded-lg p-4 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none leading-relaxed"></textarea>
             </div>
 
             <!-- Grid Settings (Suffix) -->
@@ -324,14 +359,13 @@
             </div>
 
             <!-- Scenes List -->
-            <div class="h-1/3 min-h-[200px] border-t border-white/5 flex flex-col bg-black/20">
+            <div class="h-[250px] border-t border-white/5 flex flex-col bg-black/20">
                 <div class="p-3 border-b border-white/5 flex items-center justify-between bg-white/5">
                     <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">场次列表</label>
                     <span id="sceneCount" class="text-xs text-gray-600">0 场</span>
                 </div>
                 <div id="scenesList" class="flex-1 overflow-y-auto p-2 space-y-2">
-                    <!-- Scenes will be inserted here -->
-                    <div class="text-center text-gray-600 text-xs py-8 italic">暂无场次，请先输入剧本并点击"AI 拆解"</div>
+                    <div class="text-center text-gray-600 text-xs py-8 italic">暂无场次，请先上传剧本并点击"AI 拆解"</div>
                 </div>
             </div>
         </aside>
@@ -531,9 +565,9 @@
             
             const file = files[0];
             const validTypes = [
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-                'application/msword', // .doc
-                'text/plain' // .txt
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/msword',
+                'text/plain'
             ];
 
             if (!validTypes.includes(file.type) && !file.name.endsWith('.docx') && !file.name.endsWith('.doc') && !file.name.endsWith('.txt')) {
@@ -542,7 +576,7 @@
             }
 
             uploadedFileName = file.name;
-            showUploadToast(file.name);
+            showUploadSuccess(file.name);
 
             // Read file
             if (file.name.endsWith('.txt')) {
@@ -559,7 +593,6 @@
                     mammoth.extractRawText({ arrayBuffer: arrayBuffer })
                         .then(result => {
                             document.getElementById('scriptInput').value = result.value;
-                            // Optional: Show messages if any
                             if (result.messages.length > 0) {
                                 console.log('Word conversion messages:', result.messages);
                             }
@@ -573,18 +606,31 @@
             }
         }
 
-        function showUploadToast(filename) {
-            const toast = document.getElementById('uploadToast');
-            const nameSpan = document.getElementById('uploadFileName');
-            nameSpan.textContent = `已加载: ${filename}`;
-            toast.classList.remove('hidden');
+        function showUploadSuccess(filename) {
+            const dropZone = document.getElementById('dropZone');
+            const content = document.getElementById('dropZoneContent');
+            const success = document.getElementById('uploadSuccess');
+            const fileNameSpan = document.getElementById('fileName');
+            
+            dropZone.classList.add('has-file');
+            content.classList.add('hidden');
+            success.classList.remove('hidden');
+            success.classList.add('flex');
+            fileNameSpan.textContent = filename;
         }
 
-        function clearUpload() {
+        function clearFile() {
+            const dropZone = document.getElementById('dropZone');
+            const content = document.getElementById('dropZoneContent');
+            const success = document.getElementById('uploadSuccess');
+            const fileInput = document.getElementById('fileInput');
+            
+            dropZone.classList.remove('has-file');
+            content.classList.remove('hidden');
+            success.classList.add('hidden');
+            success.classList.remove('flex');
+            fileInput.value = '';
             uploadedFileName = null;
-            document.getElementById('uploadToast').classList.add('hidden');
-            document.getElementById('fileInput').value = '';
-            document.getElementById('scriptInput').value = '';
         }
 
         // API Functions
@@ -605,10 +651,8 @@
             showLoading('正在分析剧本结构...');
 
             try {
-                // Simulate AI analysis (Replace with actual Toapis API call)
                 const prompt = `请将以下剧本拆解为场次和镜头。按JSON格式返回：{"scenes":[{"id":"场次号","title":"场次标题","shots":[{"id":"镜头号","description":"镜头描述","type":"镜头类型"}]}]}\n\n剧本内容：\n${script}`;
                 
-                // Mock AI response for demo
                 await simulateAIAnalysis(script);
                 
                 renderScenesList();
@@ -622,10 +666,8 @@
         }
 
         async function simulateAIAnalysis(script) {
-            // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 1500));
             
-            // Parse script roughly (in real app, this would be AI response)
             const lines = script.split('\n').filter(l => l.trim());
             scenes = [];
             let currentScene = null;
@@ -652,7 +694,6 @@
             
             if (currentScene) scenes.push(currentScene);
             
-            // Flatten shots for canvas
             shots = scenes.flatMap(s => s.shots.map((shot, idx) => ({
                 ...shot,
                 sceneId: s.id,
@@ -729,7 +770,6 @@
                 </div>
             `;
             
-            // Add drag functionality
             const handle = el.querySelector('.handle');
             handle.addEventListener('mousedown', (e) => startDrag(e, shot.id));
             
@@ -872,7 +912,6 @@
                 const suffix = getSuffixPrompt();
                 const fullPrompt = `${prefix} ${shot.description} ${suffix}`;
                 
-                // Call Toapis Image API
                 const response = await fetch('https://api.toapis.com/v1/images/generations', {
                     method: 'POST',
                     headers: {
@@ -894,7 +933,6 @@
                 shot.image = data.data[0].url;
                 shot.generated = true;
                 
-                // Update UI
                 const el = document.querySelector(`[data-id="${shotId}"]`);
                 if (el) {
                     const container = el.querySelector('.flex-1.relative');
@@ -908,7 +946,6 @@
                 saveToLocalStorage();
             } catch (error) {
                 hideLoading();
-                // Fallback to placeholder for demo
                 shot.image = `https://picsum.photos/seed/${shotId}/400/300`;
                 const el = document.querySelector(`[data-id="${shotId}"]`);
                 if (el) {
@@ -931,7 +968,7 @@
             
             for (let i = 0; i < ungenerated.length; i++) {
                 await generateShotImage(ungenerated[i].id);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
 
@@ -991,7 +1028,7 @@
             document.getElementById('scriptInput').value = '';
             scenes = [];
             renderScenesList();
-            clearUpload();
+            clearFile();
         }
 
         function renderScenesList() {
@@ -999,7 +1036,7 @@
             document.getElementById('sceneCount').textContent = `${scenes.length} 场`;
             
             if (scenes.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-600 text-xs py-8 italic">暂无场次，请先输入剧本并点击"AI 拆解"</div>';
+                container.innerHTML = '<div class="text-center text-gray-600 text-xs py-8 italic">暂无场次，请先上传剧本并点击"AI 拆解"</div>';
                 return;
             }
             
@@ -1089,7 +1126,6 @@
             currentEditingShot.type = document.getElementById('modalShotType').value;
             currentEditingShot.cameraMove = document.getElementById('modalCameraMove').value;
             
-            // Refresh canvas
             generateShotsOnCanvas();
             closeShotModal();
             saveToLocalStorage();
@@ -1186,7 +1222,6 @@
         }
 
         function setupCanvasInteractions() {
-            // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Delete' && selectedShot) {
                     deleteShot(selectedShot);
