@@ -84,7 +84,7 @@
         <div class="flex items-center gap-2">
             <div class="w-7 h-7 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">S</div>
             <h1 class="text-base font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">Toapis版(修复版)</span>
+                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">Toapis版(修复版2)</span>
             </h1>
         </div>
         
@@ -144,7 +144,12 @@
                         </div>
                         
                         <div id="proxySettings" class="hidden space-y-2">
-                            <input type="text" id="proxyUrl" placeholder="http://localhost:3000/proxy" class="w-full bg-yellow-500/10 border border-yellow-500/30 rounded px-2 py-1.5 text-xs text-white placeholder-yellow-500/50 focus:outline-none focus:border-yellow-500/50 font-mono" oninput="clearValidation('proxyUrl')">
+                            <div class="flex gap-2">
+                                <input type="text" id="proxyUrl" placeholder="例如: http://localhost:3000/proxy" class="flex-1 bg-yellow-500/10 border border-yellow-500/30 rounded px-2 py-1.5 text-xs text-white placeholder-yellow-500/50 focus:outline-none focus:border-yellow-500/50 font-mono" oninput="clearValidation('proxyUrl')">
+                                <button onclick="fillDefaultProxy()" class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-[10px] border border-yellow-500/30 hover:bg-yellow-500/30 whitespace-nowrap">
+                                    填入默认
+                                </button>
+                            </div>
                             <div class="text-[10px] text-yellow-500/70 space-y-1">
                                 <div>代理代码 (Node.js):</div>
                                 <code class="block bg-black/50 p-1.5 rounded text-[9px] font-mono whitespace-pre-wrap break-all">npm install express cors node-fetch
@@ -162,7 +167,8 @@ app.all('/proxy/*', async (req, res) => {
   });
   res.json(await r.json());
 });
-app.listen(3000);</code>
+app.listen(3000);
+console.log('代理运行在 http://localhost:3000/proxy');</code>
                             </div>
                             <div id="proxyUrlValidation" class="validation-msg"></div>
                         </div>
@@ -473,7 +479,6 @@ app.listen(3000);</code>
         let dragOffset = { x: 0, y: 0 };
         let uploadedFileName = null;
         let abortController = null;
-        // 注意：不再依赖全局 useProxy 变量，改为实时读取 DOM
         
         let referenceImages = {
             character: [],
@@ -499,7 +504,6 @@ app.listen(3000);</code>
             updateSuffixPrompt();
             updateApiStatus('pending', '等待配置');
             
-            // 监听模型选择变化，更新提示
             document.getElementById('imageModel').addEventListener('change', function(e) {
                 const model = e.target.value;
                 const hint = document.getElementById('modelHint');
@@ -513,13 +517,32 @@ app.listen(3000);</code>
             });
         });
 
+        function fillDefaultProxy() {
+            const input = document.getElementById('proxyUrl');
+            input.value = 'http://localhost:3000/proxy';
+            clearValidation('proxyUrl');
+            // 视觉反馈
+            input.style.background = 'rgba(34, 197, 94, 0.1)';
+            input.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+            setTimeout(() => {
+                input.style.background = '';
+                input.style.borderColor = '';
+            }, 500);
+        }
+
         function toggleProxy() {
             const isChecked = document.getElementById('useProxy').checked;
-            document.getElementById('proxySettings').classList.toggle('hidden', !isChecked);
-            // 清除可能存在的验证错误
+            const proxySettings = document.getElementById('proxySettings');
+            proxySettings.classList.toggle('hidden', !isChecked);
+            
             if (isChecked) {
-                clearValidation('proxyUrl');
+                // 如果开启代理且输入框为空，自动填入默认值
+                const proxyUrl = document.getElementById('proxyUrl');
+                if (!proxyUrl.value.trim()) {
+                    fillDefaultProxy();
+                }
             }
+            clearValidation('proxyUrl');
         }
 
         function clearValidation(fieldId) {
@@ -542,12 +565,10 @@ app.listen(3000);</code>
             }
         }
 
-        // 关键修复：实时读取复选框状态，不依赖可能不同步的全局变量
         function validateConfig() {
             const apiKey = document.getElementById('apiKey').value.trim();
             const apiBaseUrl = document.getElementById('apiBaseUrl').value.trim();
             const proxyUrl = document.getElementById('proxyUrl').value.trim();
-            // 关键：实时读取复选框状态，而不是依赖全局 useProxy 变量
             const isProxyEnabled = document.getElementById('useProxy').checked;
             
             let isValid = true;
@@ -564,10 +585,9 @@ app.listen(3000);</code>
                 isValid = false;
             }
             
-            // 根据实时读取的代理状态进行验证
             if (isProxyEnabled) {
                 if (!proxyUrl) {
-                    showFieldError('proxyUrl', '请输入代理服务器地址');
+                    showFieldError('proxyUrl', '请输入代理服务器地址，或点击"填入默认"');
                     isValid = false;
                 } else if (!proxyUrl.startsWith('http')) {
                     showFieldError('proxyUrl', '代理地址应以 http:// 或 https:// 开头');
@@ -583,9 +603,7 @@ app.listen(3000);</code>
                 }
             }
             
-            // 构建最终 URL
             let finalBaseUrl = isProxyEnabled ? proxyUrl : apiBaseUrl;
-            // 确保不以 / 结尾
             finalBaseUrl = finalBaseUrl.replace(/\/$/, '');
             
             return { isValid, apiKey, baseUrl: finalBaseUrl, isProxyEnabled };
@@ -1544,11 +1562,11 @@ app.listen(3000);</code>
                 useProxy: document.getElementById('useProxy').checked,
                 proxyUrl: document.getElementById('proxyUrl').value
             };
-            localStorage.setItem('storyboard_toapis_v4', JSON.stringify(data));
+            localStorage.setItem('storyboard_toapis_v5', JSON.stringify(data));
         }
 
         function loadFromLocalStorage() {
-            const saved = localStorage.getItem('storyboard_toapis_v4');
+            const saved = localStorage.getItem('storyboard_toapis_v5');
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
@@ -1570,7 +1588,7 @@ app.listen(3000);</code>
                     if (data.imageModel) document.getElementById('imageModel').value = data.imageModel;
                     if (data.useProxy !== undefined) {
                         document.getElementById('useProxy').checked = data.useProxy;
-                        toggleProxy();
+                        toggleProxy(); // 这会触发自动填充默认值
                     }
                     if (data.proxyUrl) document.getElementById('proxyUrl').value = data.proxyUrl;
                     
