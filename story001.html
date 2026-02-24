@@ -473,7 +473,7 @@ app.listen(3000);</code>
         let dragOffset = { x: 0, y: 0 };
         let uploadedFileName = null;
         let abortController = null;
-        let useProxy = false;
+        // 注意：不再依赖全局 useProxy 变量，改为实时读取 DOM
         
         let referenceImages = {
             character: [],
@@ -514,8 +514,12 @@ app.listen(3000);</code>
         });
 
         function toggleProxy() {
-            useProxy = document.getElementById('useProxy').checked;
-            document.getElementById('proxySettings').classList.toggle('hidden', !useProxy);
+            const isChecked = document.getElementById('useProxy').checked;
+            document.getElementById('proxySettings').classList.toggle('hidden', !isChecked);
+            // 清除可能存在的验证错误
+            if (isChecked) {
+                clearValidation('proxyUrl');
+            }
         }
 
         function clearValidation(fieldId) {
@@ -538,10 +542,13 @@ app.listen(3000);</code>
             }
         }
 
+        // 关键修复：实时读取复选框状态，不依赖可能不同步的全局变量
         function validateConfig() {
             const apiKey = document.getElementById('apiKey').value.trim();
             const apiBaseUrl = document.getElementById('apiBaseUrl').value.trim();
-            const proxyUrl = document.getElementById('proxyUrl')?.value.trim() || '';
+            const proxyUrl = document.getElementById('proxyUrl').value.trim();
+            // 关键：实时读取复选框状态，而不是依赖全局 useProxy 变量
+            const isProxyEnabled = document.getElementById('useProxy').checked;
             
             let isValid = true;
             
@@ -557,7 +564,8 @@ app.listen(3000);</code>
                 isValid = false;
             }
             
-            if (useProxy) {
+            // 根据实时读取的代理状态进行验证
+            if (isProxyEnabled) {
                 if (!proxyUrl) {
                     showFieldError('proxyUrl', '请输入代理服务器地址');
                     isValid = false;
@@ -576,11 +584,11 @@ app.listen(3000);</code>
             }
             
             // 构建最终 URL
-            let finalBaseUrl = useProxy ? proxyUrl : apiBaseUrl;
+            let finalBaseUrl = isProxyEnabled ? proxyUrl : apiBaseUrl;
             // 确保不以 / 结尾
             finalBaseUrl = finalBaseUrl.replace(/\/$/, '');
             
-            return { isValid, apiKey, baseUrl: finalBaseUrl };
+            return { isValid, apiKey, baseUrl: finalBaseUrl, isProxyEnabled };
         }
 
         function updateApiStatus(status, text) {
@@ -590,7 +598,7 @@ app.listen(3000);</code>
         }
 
         async function validateAndTestApi() {
-            const { isValid, apiKey, baseUrl } = validateConfig();
+            const { isValid, apiKey, baseUrl, isProxyEnabled } = validateConfig();
             if (!isValid) {
                 updateApiStatus('error', '配置有误');
                 return;
@@ -627,7 +635,7 @@ app.listen(3000);</code>
                     showError('连接超时，请检查代理是否运行或网络状态');
                 } else if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
                     updateApiStatus('error', 'CORS 错误');
-                    showError(`跨域错误！请勾选"使用代理服务器"选项，或安装浏览器 CORS 插件。\n\n原始错误: ${error.message}`);
+                    showError(`跨域错误！请勾选"使用代理服务器"选项，并确保代理已运行。\n\n原始错误: ${error.message}`);
                 } else {
                     updateApiStatus('error', '连接失败');
                     showError(`连接失败: ${error.message}`);
@@ -663,7 +671,6 @@ app.listen(3000);</code>
                 for (const file of files) {
                     if (!file.type.startsWith('image/')) continue;
                     
-                    // 压缩图片到最大 512px，避免 413 Payload Too Large
                     const compressedSrc = await compressImage(file, 512, 0.8);
                     
                     const id = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -714,7 +721,6 @@ app.listen(3000);</code>
                     ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 转换为 JPEG 减少体积
                     const dataUrl = canvas.toDataURL('image/jpeg', quality);
                     resolve(dataUrl);
                 };
@@ -917,7 +923,7 @@ app.listen(3000);</code>
 
         // AI Analysis
         async function analyzeScript() {
-            const { isValid, apiKey, baseUrl } = validateConfig();
+            const { isValid, apiKey, baseUrl, isProxyEnabled } = validateConfig();
             if (!isValid) {
                 alert('请正确填写 API 配置信息');
                 return;
@@ -1103,7 +1109,7 @@ app.listen(3000);</code>
 
         // Generation with optimized reference handling
         async function generateWithAllPrompts() {
-            const { isValid, apiKey, baseUrl } = validateConfig();
+            const { isValid, apiKey, baseUrl, isProxyEnabled } = validateConfig();
             if (!isValid) {
                 alert('请正确填写 API 配置信息');
                 return;
@@ -1119,7 +1125,6 @@ app.listen(3000);</code>
             const hasLockedRefs = lockedRefs.character.length > 0 || lockedRefs.scene.length > 0;
             const imageModel = document.getElementById('imageModel').value;
             
-            // 检查模型是否支持参考图
             const supportsRefImages = imageModel.includes('nano-banana') || imageModel === 'gpt-4o-image';
             if (hasLockedRefs && !supportsRefImages) {
                 if (!confirm(`当前选择的模型 ${imageModel} 不支持参考图功能。\n\n已锁定的 ${lockedRefs.character.length + lockedRefs.scene.length} 张图片将被忽略。\n\n是否继续生成？`)) {
@@ -1127,7 +1132,7 @@ app.listen(3000);</code>
                 }
             }
             
-            showLoading('正在生成图片...', `使用模型: ${imageModel}${useProxy ? ' (通过代理)' : ''}`, 0);
+            showLoading('正在生成图片...', `使用模型: ${imageModel}${isProxyEnabled ? ' (通过代理)' : ''}`, 0);
             
             updateProgress(20, '构建提示词...');
             
@@ -1155,7 +1160,6 @@ app.listen(3000);</code>
             try {
                 updateProgress(40, '准备请求数据...');
                 
-                // 构建请求体，根据不同模型调整格式
                 const requestBody = buildImageRequest(imageModel, fullPrompt, lockedRefs, supportsRefImages);
                 
                 updateProgress(60, '发送生成请求...');
@@ -1198,7 +1202,6 @@ app.listen(3000);</code>
                 hideLoading();
                 handleApiError(error, '生成失败');
                 
-                // 提供模拟图片选项
                 if (confirm(`生成失败，是否使用模拟图片继续测试界面功能？\n\n错误: ${error.message.substring(0, 50)}...`)) {
                     const mockUrl = `https://picsum.photos/seed/${Date.now()}/800/600`;
                     createShotOnCanvas(mockUrl, fullPrompt + ' [模拟图片]', lockedRefs);
@@ -1218,11 +1221,9 @@ app.listen(3000);</code>
             
             if (!supportsRefImages) return body;
             
-            // 限制参考图数量，避免 413 错误
             const allRefs = [...lockedRefs.character, ...lockedRefs.scene].slice(0, 3);
             
             if (model.includes('nano-banana')) {
-                // nano-banana 格式: 主参考图放 image_prompt，其他放 reference_images
                 if (allRefs.length > 0) {
                     body.image_prompt = allRefs[0].src;
                     if (allRefs.length > 1) {
@@ -1230,7 +1231,6 @@ app.listen(3000);</code>
                     }
                 }
             } else if (model === 'gpt-4o-image') {
-                // gpt-4o-image 格式
                 if (allRefs.length > 0) {
                     body.reference_images = allRefs.map(r => ({
                         type: lockedRefs.character.includes(r) ? 'character' : 'scene',
@@ -1258,8 +1258,6 @@ app.listen(3000);</code>
         function createShotOnCanvas(imageUrl, promptText, refsUsed) {
             const container = document.getElementById('shotsContainer');
             const id = `GEN_${Date.now()}`;
-            
-            // 智能放置位置：寻找空白区域或网格对齐
             const cols = 5;
             const index = container.children.length;
             const x = 100 + (index % cols) * 320;
@@ -1313,14 +1311,12 @@ app.listen(3000);</code>
             container.appendChild(el);
             updateCanvasStats();
             
-            // 自动滚动到新元素
             setTimeout(() => {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
             }, 100);
         }
 
         function viewPrompt(prompt) {
-            // 创建模态框显示完整提示词
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4';
             modal.innerHTML = `
@@ -1426,11 +1422,9 @@ app.listen(3000);</code>
             let x = (e.clientX - canvasRect.left - dragOffset.x) / zoomFactor;
             let y = (e.clientY - canvasRect.top - dragOffset.y) / zoomFactor;
             
-            // 边界检查
             x = Math.max(0, Math.min(x, 3000 - draggedElement.offsetWidth));
             y = Math.max(0, Math.min(y, 2000 - draggedElement.offsetHeight));
             
-            // 网格吸附 (20px)
             x = Math.round(x / 20) * 20;
             y = Math.round(y / 20) * 20;
             
@@ -1574,7 +1568,7 @@ app.listen(3000);</code>
                     if (data.apiBaseUrl) document.getElementById('apiBaseUrl').value = data.apiBaseUrl;
                     if (data.modelSelect) document.getElementById('modelSelect').value = data.modelSelect;
                     if (data.imageModel) document.getElementById('imageModel').value = data.imageModel;
-                    if (data.useProxy) {
+                    if (data.useProxy !== undefined) {
                         document.getElementById('useProxy').checked = data.useProxy;
                         toggleProxy();
                     }
