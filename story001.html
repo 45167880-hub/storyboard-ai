@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 剧本分镜生成器 | Storyboard AI Pro (CORS修复版)</title>
+    <title>AI 剧本分镜生成器 | Storyboard AI Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -70,8 +70,10 @@
         .model-label .tag { background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 1px 4px; border-radius: 3px; font-size: 9px; }
         .model-label .tag-img { background: rgba(236, 72, 153, 0.2); color: #f472b6; padding: 1px 4px; border-radius: 3px; font-size: 9px; }
         select option { background: #1a1a1a; color: #fff; }
-        .cors-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; padding: 8px; border-radius: 6px; font-size: 11px; margin-bottom: 8px; }
-        .proxy-input { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .input-error { border-color: #ef4444 !important; background: rgba(239, 68, 68, 0.1) !important; }
+        .validation-msg { font-size: 10px; margin-top: 4px; }
+        .validation-msg.error { color: #ef4444; }
+        .validation-msg.success { color: #22c55e; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col">
@@ -81,7 +83,7 @@
         <div class="flex items-center gap-2">
             <div class="w-7 h-7 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">S</div>
             <h1 class="text-base font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">CORS修复版</span>
+                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">Toapis版</span>
             </h1>
         </div>
         
@@ -90,6 +92,9 @@
                 <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
                 等待配置
             </div>
+            <button onclick="validateAndTestApi()" class="text-[10px] px-3 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-600/30 transition-colors">
+                测试连接
+            </button>
             <button onclick="exportProject()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-md transition-colors flex items-center gap-1">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 导出
@@ -103,76 +108,79 @@
         <!-- Left Panel -->
         <aside class="w-[480px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
             
-            <!-- CORS Warning -->
-            <div class="p-3 border-b border-white/5 flex-shrink-0">
-                <div class="cors-warning">
-                    <div class="font-semibold mb-1">⚠️ CORS 跨域问题解决方案</div>
-                    <div class="mb-2">如果你遇到"网络请求失败"，请使用以下任一方案：</div>
-                    <div class="space-y-1 text-[10px] opacity-90">
-                        <div>1. 使用代理服务器（推荐）</div>
-                        <div>2. 下载本地版使用（无限制）</div>
-                        <div>3. 使用 CORS 插件（临时）</div>
-                    </div>
-                </div>
-                
-                <!-- Proxy Toggle -->
-                <div class="flex items-center gap-2 mb-2">
-                    <input type="checkbox" id="useProxy" onchange="toggleProxy()" class="rounded bg-black/30 border-white/20 text-purple-500 focus:ring-purple-500">
-                    <label for="useProxy" class="text-xs text-gray-300">使用代理服务器</label>
-                </div>
-                
-                <div id="proxySettings" class="hidden space-y-2">
-                    <input type="text" id="proxyUrl" placeholder="http://localhost:3000/proxy" class="w-full proxy-input rounded px-2 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none">
-                    <div class="text-[10px] text-gray-500">本地代理地址，下方提供 Node.js 代理代码</div>
-                </div>
-            </div>
-
             <!-- API Settings -->
             <div class="p-3 border-b border-white/5 space-y-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
-                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Toapis API 配置</label>
+                    <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">API 配置 (Toapis)</label>
                     <a href="https://toapis.com/dashboard" target="_blank" class="text-[10px] px-2 py-1 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors">
                         获取 API Key →
                     </a>
                 </div>
                 
-                <div class="space-y-2">
-                    <input type="text" id="apiBaseUrl" placeholder="https://api.toapis.com/v1" value="https://api.toapis.com/v1" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 font-mono">
-                    <input type="password" id="apiKey" placeholder="输入 Toapis API Key (sk-...)" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50">
+                <div class="space-y-3">
+                    <!-- API Key -->
+                    <div>
+                        <label class="text-[10px] text-gray-500 mb-1 block">API Key <span class="text-red-400">*</span></label>
+                        <input type="password" id="apiKey" placeholder="sk-..." class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50" oninput="clearValidation('apiKey')">
+                        <div id="apiKeyValidation" class="validation-msg"></div>
+                    </div>
+
+                    <!-- Base URL -->
+                    <div>
+                        <label class="text-[10px] text-gray-500 mb-1 block">Base URL <span class="text-red-400">*</span> <span class="text-gray-600">(默认已填好)</span></label>
+                        <input type="text" id="apiBaseUrl" placeholder="https://api.toapis.com/v1" value="https://api.toapis.com/v1" class="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 font-mono" oninput="clearValidation('apiBaseUrl')">
+                        <div id="apiBaseUrlValidation" class="validation-msg"></div>
+                    </div>
+
+                    <!-- Proxy Option -->
+                    <div class="bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" id="useProxy" onchange="toggleProxy()" class="rounded bg-black/30 border-white/20 text-yellow-500 focus:ring-yellow-500">
+                            <label for="useProxy" class="text-xs text-yellow-400/90">使用代理服务器 (解决CORS问题)</label>
+                        </div>
+                        
+                        <div id="proxySettings" class="hidden space-y-2">
+                            <input type="text" id="proxyUrl" placeholder="http://localhost:3000/proxy" class="w-full bg-yellow-500/10 border border-yellow-500/30 rounded px-2 py-1.5 text-xs text-white placeholder-yellow-500/50 focus:outline-none focus:border-yellow-500/50 font-mono" oninput="clearValidation('proxyUrl')">
+                            <div class="text-[10px] text-yellow-500/70 space-y-1">
+                                <div>代理代码:</div>
+                                <code class="block bg-black/50 p-1 rounded text-[9px]">npm install express cors node-fetch</code>
+                            </div>
+                            <div id="proxyUrlValidation" class="validation-msg"></div>
+                        </div>
+                    </div>
                     
                     <!-- Text Model Selection -->
                     <div class="model-select-group">
                         <div class="model-label">
-                            <span>剧本拆解模型 (Chat)</span>
+                            <span>剧本拆解模型</span>
                             <span class="tag">文本</span>
                         </div>
                         <select id="modelSelect" class="w-full bg-black/50 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50">
-                            <option value="gpt-4o">gpt-4o (推荐)</option>
-                            <option value="gpt-4o-mini">gpt-4o-mini (经济)</option>
-                            <option value="gemini-3.0-pro">gemini-3.0-pro (Google)</option>
-                            <option value="gemini-2.5-pro">gemini-2.5-pro (Google)</option>
-                            <option value="claude-3-5-sonnet">claude-3-5-sonnet (Anthropic)</option>
-                            <option value="deepseek-chat">deepseek-chat (DeepSeek)</option>
+                            <option value="gpt-4o">gpt-4o</option>
+                            <option value="gpt-4o-mini">gpt-4o-mini</option>
+                            <option value="gemini-3.0-pro">gemini-3.0-pro</option>
+                            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                            <option value="nano-gpt-4o">nano-gpt-4o (Toapis)</option>
                         </select>
                     </div>
                     
                     <!-- Image Model Selection -->
                     <div class="model-select-group">
                         <div class="model-label">
-                            <span>图像生成模型 (Image)</span>
+                            <span>图像生成模型</span>
                             <span class="tag-img">图像</span>
                         </div>
                         <select id="imageModel" class="w-full bg-black/50 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-pink-500/50">
-                            <option value="gpt-4o-image">gpt-4o-image (OpenAI)</option>
-                            <option value="gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
                             <option value="nano-banana-pro">nano-banana-pro (专业分镜)</option>
                             <option value="nano-banana-v2">nano-banana-v2</option>
-                            <option value="dall-e-3">dall-e-3 (OpenAI)</option>
-                            <option value="wanx-v1">wanx-v1 (通义万相)</option>
+                            <option value="gpt-4o-image">gpt-4o-image</option>
+                            <option value="gpt-4o-mini">gpt-4o-mini</option>
+                            <option value="dall-e-3">dall-e-3</option>
                         </select>
                     </div>
                     
                     <div id="apiErrorMsg" class="hidden text-[10px] text-red-400 bg-red-950/30 p-2 rounded border border-red-900/50"></div>
+                    <div id="apiSuccessMsg" class="hidden text-[10px] text-green-400 bg-green-950/30 p-2 rounded border border-green-900/50"></div>
                 </div>
             </div>
 
@@ -477,13 +485,121 @@
             document.getElementById('proxySettings').classList.toggle('hidden', !useProxy);
         }
 
+        function clearValidation(fieldId) {
+            const field = document.getElementById(fieldId);
+            const validationMsg = document.getElementById(fieldId + 'Validation');
+            if (field) field.classList.remove('input-error');
+            if (validationMsg) {
+                validationMsg.textContent = '';
+                validationMsg.className = 'validation-msg';
+            }
+        }
+
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const validationMsg = document.getElementById(fieldId + 'Validation');
+            if (field) field.classList.add('input-error');
+            if (validationMsg) {
+                validationMsg.textContent = message;
+                validationMsg.className = 'validation-msg error';
+            }
+        }
+
+        function validateConfig() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value.trim();
+            const proxyUrl = document.getElementById('proxyUrl')?.value.trim() || '';
+            
+            let isValid = true;
+            
+            // Clear previous validations
+            clearValidation('apiKey');
+            clearValidation('apiBaseUrl');
+            clearValidation('proxyUrl');
+            
+            // Validate API Key
+            if (!apiKey) {
+                showFieldError('apiKey', '请输入 API Key');
+                isValid = false;
+            } else if (!apiKey.startsWith('sk-') && !apiKey.startsWith('tk-')) {
+                showFieldError('apiKey', 'API Key 格式错误 (应以 sk- 或 tk- 开头)');
+                isValid = false;
+            }
+            
+            // Validate URL based on proxy setting
+            if (useProxy) {
+                if (!proxyUrl) {
+                    showFieldError('proxyUrl', '请输入代理服务器地址');
+                    isValid = false;
+                } else if (!proxyUrl.startsWith('http')) {
+                    showFieldError('proxyUrl', '代理地址应以 http:// 或 https:// 开头');
+                    isValid = false;
+                }
+            } else {
+                if (!apiBaseUrl) {
+                    showFieldError('apiBaseUrl', '请输入 Base URL');
+                    isValid = false;
+                } else if (!apiBaseUrl.startsWith('http')) {
+                    showFieldError('apiBaseUrl', 'Base URL 应以 http:// 或 https:// 开头');
+                    isValid = false;
+                }
+            }
+            
+            return { isValid, apiKey, baseUrl: useProxy ? proxyUrl : apiBaseUrl };
+        }
+
         function updateApiStatus(status, text) {
             const el = document.getElementById('apiStatus');
             el.className = `api-status ${status}`;
             el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-current ${status === 'pending' ? 'animate-pulse' : ''}"></span>${text}`;
         }
 
-        // Reference Images System
+        async function validateAndTestApi() {
+            const { isValid, apiKey, baseUrl } = validateConfig();
+            if (!isValid) {
+                updateApiStatus('error', '配置有误');
+                return;
+            }
+            
+            updateApiStatus('pending', '测试中...');
+            
+            try {
+                // Test with a simple models list request
+                const response = await fetch(`${baseUrl}/models`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                });
+                
+                if (response.ok) {
+                    updateApiStatus('ok', '连接正常');
+                    showSuccess('API 连接测试成功！');
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error.substring(0, 100)}`);
+                }
+            } catch (error) {
+                updateApiStatus('error', '连接失败');
+                showError(`连接失败: ${error.message}\n\n如果看到 CORS 错误，请开启代理服务器选项`);
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('apiErrorMsg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('apiSuccessMsg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        }
+
+        // Reference Images System (same as before)
         function handleRefImages(e, type) {
             const files = Array.from(e.target.files);
             if (!files.length) return;
@@ -606,7 +722,7 @@
             };
         }
 
-        // File Upload
+        // File Upload functions (same)
         function setupDragDrop() {
             const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
@@ -698,11 +814,15 @@
             document.getElementById('midPrompt').value = '';
         }
 
-        // AI Analysis
+        // AI Analysis with validation
         async function analyzeScript() {
+            const { isValid, apiKey, baseUrl } = validateConfig();
+            if (!isValid) {
+                alert('请正确填写 API 配置信息');
+                return;
+            }
+
             const script = document.getElementById('scriptInput').value.trim();
-            const apiKey = document.getElementById('apiKey').value;
-            const baseUrl = useProxy ? document.getElementById('proxyUrl').value : document.getElementById('apiBaseUrl').value;
             const model = document.getElementById('modelSelect').value;
             
             if (!script) {
@@ -710,17 +830,10 @@
                 return;
             }
 
-            if (!apiKey || !baseUrl) {
-                alert('请先配置 API Key 和 Base URL');
-                return;
-            }
-
             showLoading('正在分析剧本结构...', `使用 ${model} 分析中...`, 10);
             
             try {
-                const url = useProxy ? `${baseUrl}/chat/completions` : `${baseUrl}/chat/completions`;
-                
-                const response = await fetch(url, {
+                const response = await fetch(`${baseUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -743,7 +856,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API 错误: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
@@ -763,14 +877,7 @@
             } catch (error) {
                 console.error(error);
                 hideLoading();
-                
-                await simulateAIAnalysis(script);
-                autoFillStyle(script);
-                renderScenesList();
-                document.getElementById('midPrompt').value = script.substring(0, 500) + (script.length > 500 ? '...' : '');
-                saveToLocalStorage();
-                
-                showApiError(`API 调用失败，已使用本地解析: ${error.message}`);
+                showError(`API 调用失败: ${error.message}\n\n如果看到 CORS 错误，请开启代理服务器选项`);
             }
         }
 
@@ -807,79 +914,6 @@
             const script = document.getElementById('scriptInput').value;
             if (script.trim()) {
                 autoFillStyle(script);
-            }
-        }
-
-        async function simulateAIAnalysis(script) {
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            const lines = script.split('\n').filter(l => l.trim());
-            scenes = [];
-            let currentScene = null;
-            let shotCounter = 1;
-            
-            const scenePatterns = [
-                /^第[一二三四五六七八九十\d]+场[：:]/,
-                /^场景?\s*\d+[：:]/,
-                /^SCENE\s*\d+[：:]/i,
-                /^(EXT|INT)[\.\s]/i,
-                /^场\s*\d+/,
-                /^景\s*\d+/
-            ];
-            
-            lines.forEach((line) => {
-                const trimmedLine = line.trim();
-                const isSceneHeader = scenePatterns.some(pattern => pattern.test(trimmedLine)) ||
-                                     (trimmedLine.includes('场') && trimmedLine.length < 25 && !trimmedLine.includes('。'));
-                
-                if (isSceneHeader) {
-                    if (currentScene && currentScene.shots.length > 0) {
-                        scenes.push(currentScene);
-                    }
-                    currentScene = {
-                        id: `SC${scenes.length + 1}`,
-                        title: trimmedLine,
-                        shots: []
-                    };
-                } else if (currentScene && trimmedLine.length > 5) {
-                    const sentences = trimmedLine.match(/[^。！？.!?]+[。！？.!?]+/g) || [trimmedLine];
-                    sentences.forEach(sentence => {
-                        if (sentence.trim().length > 5) {
-                            currentScene.shots.push({
-                                id: `${currentScene.id}_SHOT${shotCounter++}`,
-                                description: sentence.trim(),
-                                type: '中景',
-                                cameraMove: '固定'
-                            });
-                        }
-                    });
-                }
-            });
-            
-            if (currentScene && currentScene.shots.length > 0) {
-                scenes.push(currentScene);
-            }
-            
-            if (scenes.length === 0 && script.length > 0) {
-                const defaultScene = {
-                    id: 'SC1',
-                    title: '未命名场景',
-                    shots: []
-                };
-                const sentences = script.match(/[^。！？.!?]+[。！？.!?]+/g) || [script];
-                sentences.forEach((sentence, idx) => {
-                    if (sentence.trim().length > 5) {
-                        defaultScene.shots.push({
-                            id: `SC1_SHOT${shotCounter++}`,
-                            description: sentence.trim(),
-                            type: '中景',
-                            cameraMove: '固定'
-                        });
-                    }
-                });
-                if (defaultScene.shots.length > 0) {
-                    scenes.push(defaultScene);
-                }
             }
         }
 
@@ -944,14 +978,11 @@
             }
         }
 
-        // Generation with Proxy Support
+        // Generation with validation
         async function generateWithAllPrompts() {
-            const apiKey = document.getElementById('apiKey').value;
-            const baseUrl = useProxy ? document.getElementById('proxyUrl').value : document.getElementById('apiBaseUrl').value;
-            const imageModel = document.getElementById('imageModel').value;
-            
-            if (!apiKey || !baseUrl) {
-                alert('请先配置 API Key 和 Base URL');
+            const { isValid, apiKey, baseUrl } = validateConfig();
+            if (!isValid) {
+                alert('请正确填写 API 配置信息');
                 return;
             }
 
@@ -963,6 +994,7 @@
 
             const lockedRefs = getLockedReferences();
             const hasLockedRefs = lockedRefs.character.length > 0 || lockedRefs.scene.length > 0;
+            const imageModel = document.getElementById('imageModel').value;
             
             showLoading('正在生成图片...', `使用模型: ${imageModel}${useProxy ? ' (通过代理)' : ''}`, 0);
             
@@ -1012,9 +1044,7 @@
                     ];
                 }
                 
-                const endpoint = useProxy ? `${baseUrl}/images/generations` : `${baseUrl}/images/generations`;
-                
-                const response = await fetch(endpoint, {
+                const response = await fetch(`${baseUrl}/images/generations`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1052,13 +1082,13 @@
                 hideLoading();
                 
                 let errorMsg = error.message;
-                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    errorMsg = 'CORS 跨域错误！\n\n请使用以下方法解决：\n1. 开启"使用代理服务器"，运行本地代理\n2. 或安装浏览器 CORS 插件\n3. 或将本页面下载到本地双击打开';
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('CORS')) {
+                    errorMsg = 'CORS 跨域错误！请开启"使用代理服务器"选项，或安装浏览器 CORS 插件。';
                 } else if (error.message.includes('401')) {
                     errorMsg = 'API Key 无效 (401)';
                 }
                 
-                showApiError(`生成失败: ${errorMsg}`);
+                showError(errorMsg);
                 updateApiStatus('error', '生成失败');
                 
                 if (confirm(`生成失败，是否使用模拟图片继续测试界面功能？`)) {
@@ -1289,15 +1319,6 @@
             abortController = null;
         }
 
-        function showApiError(msg) {
-            const el = document.getElementById('apiErrorMsg');
-            el.textContent = msg;
-            el.classList.remove('hidden');
-            setTimeout(() => {
-                el.classList.add('hidden');
-            }, 8000);
-        }
-
         function exportProject() {
             const shots = Array.from(document.querySelectorAll('.shot-card img')).map(img => ({
                 url: img.src,
@@ -1334,11 +1355,11 @@
                 modelSelect: document.getElementById('modelSelect').value,
                 imageModel: document.getElementById('imageModel').value
             };
-            localStorage.setItem('storyboard_toapis_v2', JSON.stringify(data));
+            localStorage.setItem('storyboard_toapis_v3', JSON.stringify(data));
         }
 
         function loadFromLocalStorage() {
-            const saved = localStorage.getItem('storyboard_toapis_v2');
+            const saved = localStorage.getItem('storyboard_toapis_v3');
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
