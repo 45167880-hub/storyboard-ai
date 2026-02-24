@@ -3,388 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 剧本分镜生成器 | Storyboard AI Pro</title>
+    <title>AI 剧本分镜生成器 | Storyboard AI Pro (CORS修复版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Noto Sans SC', sans-serif;
-            background: #0a0a0a;
-            color: #e5e5e5;
-            overflow: hidden;
-        }
-        
+        body { font-family: 'Noto Sans SC', sans-serif; background: #0a0a0a; color: #e5e5e5; overflow: hidden; }
         .mono { font-family: 'JetBrains Mono', monospace; }
-        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #1a1a1a; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-        
-        .canvas-bg {
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 20px 20px;
-        }
-        
-        .glass {
-            background: rgba(20, 20, 20, 0.9);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-        
-        .glass-panel {
-            background: rgba(30, 30, 30, 0.7);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        
-        .drop-zone {
-            border: 2px dashed rgba(59, 130, 246, 0.3);
-            background: rgba(59, 130, 246, 0.05);
-            transition: all 0.3s ease;
-        }
-        .drop-zone.drag-over {
-            border-color: #3b82f6;
-            background: rgba(59, 130, 246, 0.15);
-        }
-        .drop-zone.has-file {
-            border-color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-        }
-        
-        .ref-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 8px;
-        }
-        
-        .ref-item {
-            aspect-ratio: 1;
-            border-radius: 6px;
-            overflow: hidden;
-            position: relative;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-            cursor: pointer;
-            background: rgba(0,0,0,0.3);
-        }
-        
-        .ref-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-        
-        .ref-item.locked {
-            border-color: #f59e0b;
-            box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
-        }
-        
-        .ref-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .ref-item .overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            opacity: 0;
-            transition: opacity 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-        }
-        
-        .ref-item:hover .overlay {
-            opacity: 1;
-        }
-        
-        .ref-item.locked .overlay {
-            opacity: 1;
-            background: rgba(245, 158, 11, 0.2);
-        }
-        
-        .ref-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            transition: all 0.2s;
-        }
-        
-        .ref-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: scale(1.1);
-        }
-        
-        .ref-btn.lock.active {
-            background: #f59e0b;
-            color: #000;
-        }
-        
-        .lock-badge {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            width: 16px;
-            height: 16px;
-            background: #f59e0b;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #000;
-            font-size: 10px;
-            z-index: 10;
-        }
-        
-        .upload-slot {
-            border: 2px dashed rgba(168, 85, 247, 0.3);
-            background: rgba(168, 85, 247, 0.05);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            aspect-ratio: 1;
-        }
-        
-        .upload-slot:hover {
-            border-color: #a855f7;
-            background: rgba(168, 85, 247, 0.1);
-        }
-        
-        .scene-item {
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-            margin-bottom: 2px;
-        }
-        .scene-item:hover {
-            background: rgba(255,255,255,0.05);
-            border-left-color: #3b82f6;
-        }
-        
-        .shot-list {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        .shot-list.expanded {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        
-        .shot-item {
-            transition: all 0.2s;
-            cursor: pointer;
-            border-left: 3px solid transparent;
-            position: relative;
-            padding: 6px 10px;
-            margin-bottom: 2px;
-            border-radius: 4px;
-            user-select: none;
-            font-size: 11px;
-        }
-        .shot-item:hover {
-            background: rgba(59, 130, 246, 0.1);
-            border-left-color: #3b82f6;
-        }
-        
-        .mid-prompt-area {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            font-family: 'Noto Sans SC', sans-serif;
-            font-size: 12px;
-            line-height: 1.6;
-            resize: vertical;
-        }
-        .mid-prompt-area:focus {
-            border-color: rgba(168, 85, 247, 0.8);
-            outline: none;
-            background: rgba(0, 0, 0, 0.5);
-        }
-        
-        .shot-card {
-            position: absolute;
-            transition: box-shadow 0.2s, transform 0.1s;
-            cursor: grab;
-            user-select: none;
-            touch-action: none;
-            background: #1a1a1a;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
+        .canvas-bg { background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 20px 20px; }
+        .glass { background: rgba(20, 20, 20, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-panel { background: rgba(30, 30, 30, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.05); }
+        .drop-zone { border: 2px dashed rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); transition: all 0.3s ease; }
+        .drop-zone.drag-over { border-color: #3b82f6; background: rgba(59, 130, 246, 0.15); }
+        .drop-zone.has-file { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        .ref-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+        .ref-item { aspect-ratio: 1; border-radius: 6px; overflow: hidden; position: relative; border: 2px solid transparent; transition: all 0.2s; cursor: pointer; background: rgba(0,0,0,0.3); }
+        .ref-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .ref-item.locked { border-color: #f59e0b; box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3); }
+        .ref-item img { width: 100%; height: 100%; object-fit: cover; }
+        .ref-item .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .ref-item:hover .overlay { opacity: 1; }
+        .ref-item.locked .overlay { opacity: 1; background: rgba(245, 158, 11, 0.2); }
+        .ref-btn { width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s; }
+        .ref-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+        .ref-btn.lock.active { background: #f59e0b; color: #000; }
+        .lock-badge { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 10px; z-index: 10; }
+        .upload-slot { border: 2px dashed rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.05); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; aspect-ratio: 1; }
+        .upload-slot:hover { border-color: #a855f7; background: rgba(168, 85, 247, 0.1); }
+        .scene-item { transition: all 0.3s ease; border-left: 3px solid transparent; margin-bottom: 2px; }
+        .scene-item:hover { background: rgba(255,255,255,0.05); border-left-color: #3b82f6; }
+        .shot-list { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .shot-list.expanded { max-height: 500px; overflow-y: auto; }
+        .shot-item { transition: all 0.2s; cursor: pointer; border-left: 3px solid transparent; position: relative; padding: 6px 10px; margin-bottom: 2px; border-radius: 4px; user-select: none; font-size: 11px; }
+        .shot-item:hover { background: rgba(59, 130, 246, 0.1); border-left-color: #3b82f6; }
+        .mid-prompt-area { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(168, 85, 247, 0.3); font-family: 'Noto Sans SC', sans-serif; font-size: 12px; line-height: 1.6; resize: vertical; }
+        .mid-prompt-area:focus { border-color: rgba(168, 85, 247, 0.8); outline: none; background: rgba(0, 0, 0, 0.5); }
+        .shot-card { position: absolute; transition: box-shadow 0.2s, transform 0.1s; cursor: grab; user-select: none; touch-action: none; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; }
         .shot-card:active { cursor: grabbing; }
-        .shot-card:hover {
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            z-index: 10;
-            border-color: rgba(168, 85, 247, 0.5);
-        }
-        .shot-card.dragging {
-            opacity: 0.9;
-            z-index: 1000;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            transition: none;
-        }
-        .shot-card.selected {
-            box-shadow: 0 0 0 2px #a855f7, 0 10px 40px rgba(168, 85, 247, 0.3);
-            border-color: #a855f7;
-        }
+        .shot-card:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 10; border-color: rgba(168, 85, 247, 0.5); }
+        .shot-card.dragging { opacity: 0.9; z-index: 1000; box-shadow: 0 20px 60px rgba(0,0,0,0.8); transition: none; }
+        .shot-card.selected { box-shadow: 0 0 0 2px #a855f7, 0 10px 40px rgba(168, 85, 247, 0.3); border-color: #a855f7; }
         .shot-card.has-image { border-color: #10b981; }
-        
-        .resize-handle {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 20px;
-            height: 20px;
-            cursor: se-resize;
-            background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%);
-            border-radius: 0 0 4px 0;
-            z-index: 10;
-        }
-        
-        .loader {
-            width: 48px;
-            height: 48px;
-            border: 3px solid #333;
-            border-bottom-color: #a855f7;
-            border-radius: 50%;
-            animation: rotation 1s linear infinite;
-        }
-        
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        input[type=range] {
-            -webkit-appearance: none;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: #a855f7;
-            cursor: pointer;
-            margin-top: -6px;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #333;
-            border-radius: 2px;
-        }
-
-        .section-header {
-            background: linear-gradient(90deg, rgba(168, 85, 247, 0.15), transparent);
-            border-left: 3px solid #a855f7;
-        }
-        
-        .grid-btn {
-            position: relative;
-            overflow: hidden;
-        }
-        .grid-btn.active {
-            background: rgba(168, 85, 247, 0.2);
-            border-color: #a855f7;
-            color: #a855f7;
-        }
-        
-        .aspect-btn.active {
-            background: rgba(16, 185, 129, 0.2);
-            border-color: #10b981;
-            color: #10b981;
-        }
-
-        .prompt-textarea {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255,255,255,0.1);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            line-height: 1.6;
-        }
-        
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
-            50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8); }
-        }
-        .animate-glow {
-            animation: glow 2s ease-in-out infinite;
-        }
-        
-        .locked-refs-bar {
-            background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), transparent);
-            border-left: 3px solid #f59e0b;
-        }
-        
-        .api-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 500;
-        }
+        .resize-handle { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%); border-radius: 0 0 4px 0; z-index: 10; }
+        .loader { width: 48px; height: 48px; border: 3px solid #333; border-bottom-color: #a855f7; border-radius: 50%; animation: rotation 1s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #a855f7; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #333; border-radius: 2px; }
+        .section-header { background: linear-gradient(90deg, rgba(168, 85, 247, 0.15), transparent); border-left: 3px solid #a855f7; }
+        .grid-btn { position: relative; overflow: hidden; }
+        .grid-btn.active { background: rgba(168, 85, 247, 0.2); border-color: #a855f7; color: #a855f7; }
+        .aspect-btn.active { background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; }
+        .prompt-textarea { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.1); font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); } 50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8); } }
+        .animate-glow { animation: glow 2s ease-in-out infinite; }
+        .locked-refs-bar { background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), transparent); border-left: 3px solid #f59e0b; }
+        .api-status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 500; }
         .api-status.ok { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
         .api-status.error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .api-status.pending { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
-        
-        .model-select-group {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 8px;
-            margin-bottom: 8px;
-        }
-        
-        .model-label {
-            font-size: 10px;
-            color: #888;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .model-label .tag {
-            background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-size: 9px;
-        }
-        
-        .model-label .tag-img {
-            background: rgba(236, 72, 153, 0.2);
-            color: #f472b6;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-size: 9px;
-        }
-        
-        select option {
-            background: #1a1a1a;
-            color: #fff;
-        }
+        .model-select-group { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+        .model-label { font-size: 10px; color: #888; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+        .model-label .tag { background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 1px 4px; border-radius: 3px; font-size: 9px; }
+        .model-label .tag-img { background: rgba(236, 72, 153, 0.2); color: #f472b6; padding: 1px 4px; border-radius: 3px; font-size: 9px; }
+        select option { background: #1a1a1a; color: #fff; }
+        .cors-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; padding: 8px; border-radius: 6px; font-size: 11px; margin-bottom: 8px; }
+        .proxy-input { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col">
@@ -394,7 +81,7 @@
         <div class="flex items-center gap-2">
             <div class="w-7 h-7 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">S</div>
             <h1 class="text-base font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">Toapis版</span>
+                Storyboard AI Pro <span class="text-[10px] font-normal text-gray-500 ml-1">CORS修复版</span>
             </h1>
         </div>
         
@@ -416,6 +103,30 @@
         <!-- Left Panel -->
         <aside class="w-[480px] glass border-r border-white/5 flex flex-col z-40 overflow-y-auto">
             
+            <!-- CORS Warning -->
+            <div class="p-3 border-b border-white/5 flex-shrink-0">
+                <div class="cors-warning">
+                    <div class="font-semibold mb-1">⚠️ CORS 跨域问题解决方案</div>
+                    <div class="mb-2">如果你遇到"网络请求失败"，请使用以下任一方案：</div>
+                    <div class="space-y-1 text-[10px] opacity-90">
+                        <div>1. 使用代理服务器（推荐）</div>
+                        <div>2. 下载本地版使用（无限制）</div>
+                        <div>3. 使用 CORS 插件（临时）</div>
+                    </div>
+                </div>
+                
+                <!-- Proxy Toggle -->
+                <div class="flex items-center gap-2 mb-2">
+                    <input type="checkbox" id="useProxy" onchange="toggleProxy()" class="rounded bg-black/30 border-white/20 text-purple-500 focus:ring-purple-500">
+                    <label for="useProxy" class="text-xs text-gray-300">使用代理服务器</label>
+                </div>
+                
+                <div id="proxySettings" class="hidden space-y-2">
+                    <input type="text" id="proxyUrl" placeholder="http://localhost:3000/proxy" class="w-full proxy-input rounded px-2 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none">
+                    <div class="text-[10px] text-gray-500">本地代理地址，下方提供 Node.js 代理代码</div>
+                </div>
+            </div>
+
             <!-- API Settings -->
             <div class="p-3 border-b border-white/5 space-y-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
@@ -440,10 +151,8 @@
                             <option value="gpt-4o-mini">gpt-4o-mini (经济)</option>
                             <option value="gemini-3.0-pro">gemini-3.0-pro (Google)</option>
                             <option value="gemini-2.5-pro">gemini-2.5-pro (Google)</option>
-                            <option value="gemini-2.0-pro">gemini-2.0-pro (Google)</option>
                             <option value="claude-3-5-sonnet">claude-3-5-sonnet (Anthropic)</option>
                             <option value="deepseek-chat">deepseek-chat (DeepSeek)</option>
-                            <option value="qwen-max">qwen-max (通义千问)</option>
                         </select>
                     </div>
                     
@@ -460,15 +169,10 @@
                             <option value="nano-banana-v2">nano-banana-v2</option>
                             <option value="dall-e-3">dall-e-3 (OpenAI)</option>
                             <option value="wanx-v1">wanx-v1 (通义万相)</option>
-                            <option value="stable-diffusion-xl">stable-diffusion-xl</option>
-                            <option value="gemini-2.0-flash-exp-image">gemini-2.0-flash-exp-image</option>
                         </select>
                     </div>
                     
                     <div id="apiErrorMsg" class="hidden text-[10px] text-red-400 bg-red-950/30 p-2 rounded border border-red-900/50"></div>
-                    <div class="text-[10px] text-gray-500 bg-white/5 p-2 rounded">
-                        💡 提示：Toapis 支持 OpenAI 兼容格式，base_url 请填写 https://api.toapis.com/v1
-                    </div>
                 </div>
             </div>
 
@@ -741,6 +445,7 @@
         let dragOffset = { x: 0, y: 0 };
         let uploadedFileName = null;
         let abortController = null;
+        let useProxy = false;
         
         let referenceImages = {
             character: [],
@@ -765,18 +470,12 @@
             setupDragDrop();
             updateSuffixPrompt();
             updateApiStatus('pending', '等待配置');
-            
-            // 设置默认模型提示
-            const modelSelect = document.getElementById('modelSelect');
-            const imageModel = document.getElementById('imageModel');
-            
-            // 检查 URL 参数或本地存储
-            const urlParams = new URLSearchParams(window.location.search);
-            const key = urlParams.get('key');
-            if (key) {
-                document.getElementById('apiKey').value = key;
-            }
         });
+
+        function toggleProxy() {
+            useProxy = document.getElementById('useProxy').checked;
+            document.getElementById('proxySettings').classList.toggle('hidden', !useProxy);
+        }
 
         function updateApiStatus(status, text) {
             const el = document.getElementById('apiStatus');
@@ -1003,7 +702,7 @@
         async function analyzeScript() {
             const script = document.getElementById('scriptInput').value.trim();
             const apiKey = document.getElementById('apiKey').value;
-            const baseUrl = document.getElementById('apiBaseUrl').value;
+            const baseUrl = useProxy ? document.getElementById('proxyUrl').value : document.getElementById('apiBaseUrl').value;
             const model = document.getElementById('modelSelect').value;
             
             if (!script) {
@@ -1019,8 +718,9 @@
             showLoading('正在分析剧本结构...', `使用 ${model} 分析中...`, 10);
             
             try {
-                // 使用 Toapis 进行剧本拆解
-                const response = await fetch(`${baseUrl}/chat/completions`, {
+                const url = useProxy ? `${baseUrl}/chat/completions` : `${baseUrl}/chat/completions`;
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1064,7 +764,6 @@
                 console.error(error);
                 hideLoading();
                 
-                // Fallback to local parsing
                 await simulateAIAnalysis(script);
                 autoFillStyle(script);
                 renderScenesList();
@@ -1245,10 +944,10 @@
             }
         }
 
-        // Generation with Toapis Support
+        // Generation with Proxy Support
         async function generateWithAllPrompts() {
             const apiKey = document.getElementById('apiKey').value;
-            const baseUrl = document.getElementById('apiBaseUrl').value;
+            const baseUrl = useProxy ? document.getElementById('proxyUrl').value : document.getElementById('apiBaseUrl').value;
             const imageModel = document.getElementById('imageModel').value;
             
             if (!apiKey || !baseUrl) {
@@ -1265,7 +964,7 @@
             const lockedRefs = getLockedReferences();
             const hasLockedRefs = lockedRefs.character.length > 0 || lockedRefs.scene.length > 0;
             
-            showLoading('正在生成图片...', `使用模型: ${imageModel}`, 0);
+            showLoading('正在生成图片...', `使用模型: ${imageModel}${useProxy ? ' (通过代理)' : ''}`, 0);
             
             updateProgress(20, '构建提示词...');
             
@@ -1291,9 +990,8 @@
             abortController = new AbortController();
             
             try {
-                updateProgress(40, '发送请求到 Toapis...');
+                updateProgress(40, '发送请求...');
                 
-                // Toapis 使用 OpenAI 兼容的 Images API
                 const requestBody = {
                     model: imageModel,
                     prompt: fullPrompt,
@@ -1302,21 +1000,21 @@
                     quality: "standard"
                 };
                 
-                // 如果是 nano-banana 模型，添加参考图支持
                 if (imageModel.includes('nano-banana') && hasLockedRefs) {
                     requestBody.reference_images = [
                         ...lockedRefs.character.map(r => r.src),
                         ...lockedRefs.scene.map(r => r.src)
                     ];
                 } else if (hasLockedRefs) {
-                    // 其他模型的参考图格式
                     requestBody.reference_images = [
                         ...lockedRefs.character.map(r => ({ type: 'character', image: r.src })),
                         ...lockedRefs.scene.map(r => ({ type: 'scene', image: r.src }))
                     ];
                 }
                 
-                const response = await fetch(`${baseUrl}/images/generations`, {
+                const endpoint = useProxy ? `${baseUrl}/images/generations` : `${baseUrl}/images/generations`;
+                
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1354,18 +1052,16 @@
                 hideLoading();
                 
                 let errorMsg = error.message;
-                if (error.message.includes('fetch') || error.message.includes('network')) {
-                    errorMsg = '网络请求失败，请检查：\n1. API Key 是否正确\n2. 网络连接是否正常\n3. 如果是浏览器访问，可能存在 CORS 跨域限制';
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMsg = 'CORS 跨域错误！\n\n请使用以下方法解决：\n1. 开启"使用代理服务器"，运行本地代理\n2. 或安装浏览器 CORS 插件\n3. 或将本页面下载到本地双击打开';
                 } else if (error.message.includes('401')) {
                     errorMsg = 'API Key 无效 (401)';
-                } else if (error.message.includes('429')) {
-                    errorMsg = '请求过于频繁 (429)';
                 }
                 
                 showApiError(`生成失败: ${errorMsg}`);
                 updateApiStatus('error', '生成失败');
                 
-                if (confirm(`生成失败: ${errorMsg}\n\n是否使用模拟图片继续测试界面功能？`)) {
+                if (confirm(`生成失败，是否使用模拟图片继续测试界面功能？`)) {
                     const mockUrl = `https://picsum.photos/seed/${Date.now()}/800/600`;
                     createShotOnCanvas(mockUrl, fullPrompt + ' [模拟图片]', lockedRefs);
                 }
@@ -1599,7 +1295,7 @@
             el.classList.remove('hidden');
             setTimeout(() => {
                 el.classList.add('hidden');
-            }, 5000);
+            }, 8000);
         }
 
         function exportProject() {
@@ -1638,11 +1334,11 @@
                 modelSelect: document.getElementById('modelSelect').value,
                 imageModel: document.getElementById('imageModel').value
             };
-            localStorage.setItem('storyboard_toapis_v1', JSON.stringify(data));
+            localStorage.setItem('storyboard_toapis_v2', JSON.stringify(data));
         }
 
         function loadFromLocalStorage() {
-            const saved = localStorage.getItem('storyboard_toapis_v1');
+            const saved = localStorage.getItem('storyboard_toapis_v2');
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
