@@ -1,13 +1,14 @@
 // proxy.js - 保存后运行: node proxy.js
 const http = require('http');
 const https = require('https');
+const url = require('url');
 
 const PORT = 5000;  // 可以改成 3000/8080 等
 
 const server = http.createServer((req, res) => {
   // 设置 CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
@@ -18,16 +19,31 @@ const server = http.createServer((req, res) => {
 
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
 
+  // 🔴 修复点1：正确处理路径，确保不会变成空字符串
+  let targetPath = req.url.replace(/^\/proxy/, '') || '/';
+  
+  // 🔴 修复点2：保留原始查询参数，正确处理特殊字符
+  const parsedUrl = url.parse(req.url);
+  if (parsedUrl.search) {
+    targetPath += parsedUrl.search; // 保留 ?key=value 部分
+  }
+
   const options = {
     hostname: 'api.toapis.com',
     port: 443,
-    path: req.url.replace('/proxy', ''),
+    path: targetPath,
     method: req.method,
     headers: {
       ...req.headers,
-      host: 'api.toapis.com'
+      host: 'api.toapis.com',
+      // 🔴 修复点3：移除可能导致问题的头
+      'accept-encoding': 'identity' // 避免压缩编码问题
     }
   };
+
+  // 删除可能干扰代理的头
+  delete options.headers.connection;
+  delete options.headers['keep-alive'];
 
   const proxyReq = https.request(options, (proxyRes) => {
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
@@ -35,15 +51,24 @@ const server = http.createServer((req, res) => {
   });
 
   proxyReq.on('error', (e) => {
-    console.error('错误:', e.message);
-    res.writeHead(500);
-    res.end(JSON.stringify({error: e.message}));
+    console.error('代理错误:', e.message);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message, code: e.code }));
   });
 
   req.pipe(proxyReq);
 });
 
 server.listen(PORT, () => {
-  console.log(`✅ 代理运行中: http://localhost:${PORT}/proxy`);
-  console.log(`📋 在网页中填入: http://localhost:${PORT}/proxy`);
+  console.log(`✅ 代理服务器运行中: http://localhost:${PORT}`);
+  console.log(`📋 使用示例: http://localhost:${PORT}/proxy/api/endpoint`);
+  console.log(`⚠️  注意：请确认 api.toapis.com 是你要代理的目标域名`);
+});
+
+// 优雅退出
+process.on('SIGTERM', () => {
+  console.log('正在关闭代理服务器...');
+  server.close(() => {
+    process.exit(0);
+  });
 });
